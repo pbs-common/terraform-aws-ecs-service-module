@@ -1,6 +1,6 @@
 module "task" {
   count  = var.task_def_arn == null ? 1 : 0
-  source = "github.com/pbs/terraform-aws-ecs-task-definition-module?ref=2.1.4"
+  source = "github.com/pbs-common/terraform-aws-ecs-task-definition-module?ref=3.0.0"
 
   name = local.name
 
@@ -58,5 +58,6 @@ module "task" {
   organization = var.organization
   environment  = var.environment
   product      = var.product
+  owner        = var.owner
   repo         = var.repo
 }
