@@ -31,7 +31,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@v3
 
       - name: "Generate documentation"
         run: ./scripts/document.sh
