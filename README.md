@@ -96,13 +96,13 @@ Below is automatically generated documentation on this Terraform module using [t
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.40.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.16.0 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_cluster"></a> [cluster](#module\_cluster) | github.com/pbs/terraform-aws-ecs-cluster-module | 1.0.5 |
+| <a name="module_cluster"></a> [cluster](#module\_cluster) | github.com/pbs-common/terraform-aws-ecs-cluster-module | 2.0.0 |
 | <a name="module_task"></a> [task](#module\_task) | github.com/pbs-common/terraform-aws-ecs-task-definition-module | 3.0.0 |
 
 ## Resources
