@@ -14,7 +14,7 @@ module "virtual_gateway" {
 
   mesh_name = module.mesh.id
 
-  hosted_zone = var.hosted_zone
+  primary_hosted_zone = var.hosted_zone
 
   organization = var.organization
   environment  = var.environment
@@ -141,6 +141,9 @@ resource "aws_appmesh_route" "route" {
 module "namespace" {
   source = "github.com/pbs/terraform-aws-namespace-module?ref=0.0.1"
 
+  type = "public"
+  name = "example.org"
+
   organization = var.organization
   environment  = var.environment
   product      = var.product
@@ -161,6 +164,7 @@ module "service_v1" {
   organization = var.organization
   environment  = var.environment
   product      = var.product
+  owner        = var.owner
   repo         = var.repo
 }
 
@@ -178,5 +182,6 @@ module "service_v2" {
   organization = var.organization
   environment  = var.environment
   product      = var.product
+  owner        = var.owner
   repo         = var.repo
 }

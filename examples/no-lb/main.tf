@@ -3,6 +3,7 @@ module "service" {
 
   create_lb = false
 
+
   image_repo = "busybox"
   image_tag  = "latest"
 
