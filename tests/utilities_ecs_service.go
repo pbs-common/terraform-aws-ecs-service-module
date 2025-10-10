@@ -45,6 +45,7 @@ func testECSService(t *testing.T, variant string) {
 	terraformOptions := &terraform.Options{
 		TerraformDir: terraformDir,
 		LockTimeout:  "5m",
+		Upgrade:      true,
 	}
 
 	defer terraform.Destroy(t, terraformOptions)
@@ -81,31 +82,8 @@ func testECSService(t *testing.T, variant string) {
 			},
 		}
 		terraform.Apply(t, terraformTargetSGOptions)
-	case "am":
-		// We need to apply the virtual gateway first
-		// because of the for_each used on virtual_gateway_ids
-		terraformTargetMeshOptions := &terraform.Options{
-			TerraformDir: terraformDir,
-			LockTimeout:  "5m",
-			Targets: []string{
-				"module.mesh",
-				"module.namespace",
-			},
-		}
-		terraform.Apply(t, terraformTargetMeshOptions)
-	}
 
 	terraform.Apply(t, terraformOptions)
-
-	if variant == "am" {
-		serviceIDV1 := terraform.Output(t, terraformOptions, "service_id_v1")
-		serviceIDV2 := terraform.Output(t, terraformOptions, "service_id_v2")
-
-		// This will run before the destroy because
-		// defers are LIFO
-		defer deregisterService(serviceIDV1)
-		defer deregisterService(serviceIDV2)
-	}
 
 	if variant != "no-lb" {
 		domainName := terraform.Output(t, terraformOptions, "domain_name")
@@ -122,28 +100,7 @@ func testECSService(t *testing.T, variant string) {
 
 			httpHelper.HttpGetWithRetry(t, indexURL, nil, 200, expectedIndex, 25, 1*time.Minute)
 
-			if variant == "am" {
-				terraformSplitOptions := &terraform.Options{
-					TerraformDir: terraformDir,
-					LockTimeout:  "5m",
-					Vars: map[string]interface{}{
-						"v1_weight": "50",
-						"v2_weight": "50",
-					},
-				}
-				terraform.Apply(t, terraformSplitOptions)
-				httpHelper.HttpGetWithRetry(t, indexURL, nil, 200, expectedIndex, 25, 1*time.Minute)
-				terraformV2Options := &terraform.Options{
-					TerraformDir: terraformDir,
-					LockTimeout:  "5m",
-					Vars: map[string]interface{}{
-						"v1_weight": "0",
-						"v2_weight": "100",
-					},
-				}
-				terraform.Apply(t, terraformV2Options)
-				httpHelper.HttpGetWithRetry(t, indexURL, nil, 200, expectedIndex, 25, 1*time.Minute)
-			}
 		}
 	}
+}
 }

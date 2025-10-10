@@ -32,6 +32,17 @@ variable "repo" {
   }
 }
 
+variable "owner" {
+  description = "Tag used to group resources according to product"
+
+  default = "plops"
+
+  validation {
+    condition     = can(regex("[a-z\\-]+", var.owner))
+    error_message = "The product variable violates approved regex."
+  }
+}
+
 variable "organization" {
   description = "Organization using this module. Used to prefix tags so that they are easily identified as being from your organization"
   type        = string

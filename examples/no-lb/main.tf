@@ -3,6 +3,7 @@ module "service" {
 
   create_lb = false
 
+
   image_repo = "busybox"
   image_tag  = "latest"
 
@@ -11,5 +12,6 @@ module "service" {
   organization = var.organization
   environment  = var.environment
   product      = var.product
+  owner        = var.owner
   repo         = var.repo
 }

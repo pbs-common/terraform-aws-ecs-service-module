@@ -142,12 +142,12 @@ resource "aws_lb_listener" "nlb_tcp" {
 }
 
 resource "aws_lb_target_group" "target_group" {
-  count       = local.create_lb ? 1 : 0
-  name        = local.target_group_name
-  port        = var.container_port
-  protocol    = local.container_protocol
-  vpc_id      = local.vpc_id
-  target_type = "ip"
+  count                = local.create_lb ? 1 : 0
+  name                 = local.target_group_name
+  port                 = var.container_port
+  protocol             = local.container_protocol
+  vpc_id               = local.vpc_id
+  target_type          = "ip"
   deregistration_delay = var.lb_deregistration_delay
 
   health_check {
