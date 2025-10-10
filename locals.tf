@@ -9,18 +9,18 @@ locals {
   cluster                              = var.cluster != null ? var.cluster : one(module.cluster[*].name)
   task_def_arn                         = var.task_def_arn != null ? var.task_def_arn : one(module.task[*].arn)
   vpc_id                               = var.vpc_id != null ? var.vpc_id : one(data.aws_vpc.vpc[*].id)
-  public_service                       = !local.create_virtual_node && var.public_service
+  public_service                       = var.public_service != null
   subnets                              = var.subnets != null ? var.subnets : local.internal == true ? local.private_subnets : local.public_subnets
   private_subnets                      = var.private_subnets != null ? var.private_subnets : data.aws_subnets.private_subnets[0].ids
   public_subnets                       = var.public_subnets != null ? var.public_subnets : data.aws_subnets.public_subnets[0].ids
-  lookup_hosted_zone                   = !local.create_virtual_node && local.app_dns_record_count > 0
+  lookup_hosted_zone                   = local.app_dns_record_count > 0
   lookup_primary_acm_wildcard_cert     = local.lookup_hosted_zone && local.public_service && var.acm_arn == null
   acm_arn                              = var.acm_arn != null ? var.acm_arn : local.lookup_primary_acm_wildcard_cert ? one(data.aws_acm_certificate.primary_acm_wildcard_cert[*].arn) : null
   null_safe_hosted_zone                = var.hosted_zone == null ? "" : var.hosted_zone
   hosted_zone_id                       = local.lookup_hosted_zone ? one(data.aws_route53_zone.hosted_zone[*].zone_id) : null
   internal                             = var.internal != null ? var.internal : var.is_hosted_zone_private
-  cnames                               = local.create_virtual_node ? [] : var.cnames != null ? var.cnames : [local.name]
-  aliases                              = local.create_virtual_node ? [] : var.aliases != null ? var.aliases : ["${local.name}.${local.null_safe_hosted_zone}"]
+  cnames                               = var.cnames != null ? var.cnames : [local.name]
+  aliases                              = var.aliases != null ? var.aliases : ["${local.name}.${local.null_safe_hosted_zone}"]
   app_dns_record_count                 = local.create_lb ? length(local.cnames) : 0
   domain_name                          = !local.create_lb ? null : local.app_dns_record_count == 0 ? one(aws_lb.lb[*].dns_name) : one(aws_route53_record.app[*].fqdn)
   create_http_listeners                = local.create_lb && var.load_balancer_type == "application"
@@ -32,27 +32,23 @@ locals {
   nlb_eips                             = local.create_nlb && var.create_attach_eip_to_nlb == true ? local.subnets : []
   http_application_rule_count          = local.only_create_http_listener ? length(local.aliases) : 0
   https_application_rule_count         = local.create_https_listeners ? length(local.aliases) : 0
-  create_lb                            = !local.create_virtual_node && var.create_lb
+  create_lb                            = var.create_lb != null
   create_cidr_access_rule              = length(var.restricted_cidr_blocks) > 0
   create_sg_access_rule                = var.restricted_sg != null
   create_nlb_cidr_access_rule          = local.create_nlb && local.create_cidr_access_rule
   create_nlb_sg_access_rule            = local.create_nlb && local.create_sg_access_rule
-  create_virtual_node_cidr_access_rule = local.create_virtual_node && local.create_cidr_access_rule
-  create_virtual_node_sg_access_rule   = local.create_virtual_node && local.create_sg_access_rule
+  create_virtual_node_cidr_access_rule = local.create_cidr_access_rule != null
+  create_virtual_node_sg_access_rule   = local.create_sg_access_rule == true
   lb_security_groups                   = local.create_lb ? [one(aws_security_group.lb_sg[*].id)] : null
   container_protocol                   = var.load_balancer_type == "application" ? var.container_protocol : "TCP"
   healthcheck_protocol                 = var.healthcheck_protocol != null ? var.healthcheck_protocol : local.container_protocol
   healthcheck_matcher                  = var.load_balancer_type == "application" ? var.healthcheck_matcher : null
   healthcheck_timeout                  = var.load_balancer_type == "application" ? var.healthcheck_timeout : null
-  healthcheck_path                     = var.healthcheck_path != null ? var.healthcheck_path : local.create_virtual_node ? "/" : var.load_balancer_type == "application" ? "/" : null
   enable_execute_command               = var.enable_execute_command != null ? var.enable_execute_command : var.environment != "prod"
   desired_count                        = var.min_capacity
   deployment_maximum_percent           = local.desired_count == 1 ? 200 : var.deployment_maximum_percent # This is to avoid a bug where deployments can't happen because we can't have 1.5 tasks for a service
-  create_virtual_node                  = var.virtual_node != null
-  virtual_node_name                    = local.create_virtual_node ? one(aws_appmesh_virtual_node.virtual_node[*].name) : null
   create_cloudmap_service              = var.namespace_id != null
   cloudmap_service_id                  = local.create_cloudmap_service ? one(aws_service_discovery_service.service[*].id) : null
-  namespace                            = var.namespace != null ? var.namespace : local.name
   platform_version                     = var.platform_version != null ? var.platform_version : var.launch_type == "FARGATE" ? "LATEST" : null
 
   creator = "terraform"

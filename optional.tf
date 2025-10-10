@@ -181,29 +181,6 @@ variable "healthcheck_matcher" {
   default     = 200
   type        = number
 }
-variable "service_healthcheck_healthy_threshold" {
-  description = "The number of successful checks before a service is considered healthy"
-  default     = 2
-  type        = number
-}
-
-variable "service_healthcheck_unhealthy_threshold" {
-  description = "The number of unsuccessful checks before a service is considered unhealthy"
-  default     = 2
-  type        = number
-}
-
-variable "service_healthcheck_timeout" {
-  description = "The time, in milliseconds, before a timeout on the health check of the service"
-  default     = 3000
-  type        = number
-}
-
-variable "service_healthcheck_interval" {
-  description = "The time, in milliseconds, between health checks of the service"
-  default     = 6000
-  type        = number
-}
 
 variable "launch_type" {
   description = "The launch type on which to run your service"
@@ -425,17 +402,6 @@ variable "namespace_id" {
   description = "Namespace ID."
   type        = string
   default     = null
-}
-
-variable "namespace" {
-  description = "Namespace. If null, defaults to `var.application-tag`."
-  default     = null
-  type        = string
-}
-variable "virtual_node_protocol" {
-  description = "Protocol for the virtual node"
-  default     = "http"
-  type        = string
 }
 
 variable "dns_evaluate_target_health" {
