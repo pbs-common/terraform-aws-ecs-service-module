@@ -101,6 +101,10 @@ locals {
     {
       "name" : "OTEL_AWS_APPLICATION_SIGNALS_ENABLED",
       "value" : "true"
+    },
+    {
+      "name" : "OTEL_PROPAGATORS",
+      "value" : "xray"
     }
   ]
 
