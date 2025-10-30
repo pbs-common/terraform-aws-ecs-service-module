@@ -1,7 +1,8 @@
 module "service" {
   source = "../.."
 
-  hosted_zone = var.hosted_zone
+  hosted_zone    = var.hosted_zone
+  public_service = true
 
   load_balancer_type = "network"
   nlb_protocol       = "TCP"
@@ -10,5 +11,6 @@ module "service" {
   organization = var.organization
   environment  = var.environment
   product      = var.product
+  owner        = var.owner
   repo         = var.repo
 }

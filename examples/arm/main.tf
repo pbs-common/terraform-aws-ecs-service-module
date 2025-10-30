@@ -1,7 +1,8 @@
 module "service" {
   source = "../.."
 
-  hosted_zone = var.hosted_zone
+  hosted_zone    = var.hosted_zone
+  public_service = true
 
   runtime_platform = {
     cpu_architecture = "ARM64"
@@ -10,5 +11,6 @@ module "service" {
   organization = var.organization
   environment  = var.environment
   product      = var.product
+  owner        = var.owner
   repo         = var.repo
 }

@@ -1,6 +1,6 @@
 module "task" {
   count  = var.task_def_arn == null ? 1 : 0
-  source = "github.com/pbs/terraform-aws-ecs-task-definition-module?ref=2.0.3"
+  source = "github.com/pbs-common/terraform-aws-ecs-task-definition-module?ref=3.0.0"
 
   name = local.name
 
@@ -13,13 +13,16 @@ module "task" {
   mesh_name       = var.mesh_name
   virtual_gateway = var.virtual_gateway
 
-  role_policy_json                = var.role_policy_json
-  task_execution_role_policy_json = var.task_execution_role_policy_json
+  role_policy_json                      = var.role_policy_json
+  task_execution_role_policy_json       = var.task_execution_role_policy_json
+  extra_role_policy_json                = var.extra_role_policy_json
+  extra_task_execution_role_policy_json = var.extra_task_execution_role_policy_json
 
   service_name   = local.name
   task_family    = local.task_family
   container_name = var.container_name
   container_port = var.container_port
+  track_latest   = var.track_latest
 
   cpu_reservation    = var.cpu_reservation
   memory_reservation = var.memory_reservation
@@ -28,6 +31,7 @@ module "task" {
 
   ssm_path = var.ssm_path
   env_vars = local.env_vars
+  secrets  = var.secrets
 
   efs_mounts = var.efs_mounts
 
@@ -54,5 +58,6 @@ module "task" {
   organization = var.organization
   environment  = var.environment
   product      = var.product
+  owner        = var.owner
   repo         = var.repo
 }

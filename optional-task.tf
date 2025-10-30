@@ -104,6 +104,16 @@ variable "env_vars" {
   type        = set(map(any))
 }
 
+
+variable "secrets" {
+  description = "(optional) secrets to be passed to the container. By default none is passed"
+  default     = []
+  type = set(object({
+    name      = string
+    valueFrom = string
+  }))
+}
+
 variable "use_xray_sidecar" {
   description = "(optional) if set to null, will use the sidecar to trace the task if envoy is used, as that automatically implements tracing configs."
   default     = null
@@ -170,4 +180,16 @@ variable "pythonpath" {
   type        = string
 
   default = ":"
+}
+
+variable "track_latest" {
+  description = "(optional) Whether should track latest ACTIVE task definition on AWS or the one created with the resource stored in state."
+  default     = false
+  type        = bool
+}
+
+variable "lb_deregistration_delay" {
+  description = "(optional) task deregistration delay for the load balancer"
+  default     = 300
+  type        = number
 }

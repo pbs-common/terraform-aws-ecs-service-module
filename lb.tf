@@ -52,7 +52,7 @@ resource "aws_lb_listener" "http" {
 }
 
 resource "aws_lb_listener" "http_redirect" {
-  count             = local.create_https_listeners ? 1 : 0
+  count             = local.create_https_listeners && var.http_redirect ? 1 : 0
   load_balancer_arn = aws_lb.lb[0].id
   port              = var.http_port
   protocol          = "HTTP"
@@ -65,6 +65,18 @@ resource "aws_lb_listener" "http_redirect" {
       protocol    = "HTTPS"
       status_code = "HTTP_301"
     }
+  }
+}
+
+resource "aws_lb_listener" "http_forward" {
+  count             = local.create_https_listeners && !var.http_redirect ? 1 : 0
+  load_balancer_arn = aws_lb.lb[0].id
+  port              = var.http_port
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.target_group[0].arn
   }
 }
 
@@ -130,12 +142,13 @@ resource "aws_lb_listener" "nlb_tcp" {
 }
 
 resource "aws_lb_target_group" "target_group" {
-  count       = local.create_lb ? 1 : 0
-  name        = local.target_group_name
-  port        = var.container_port
-  protocol    = local.container_protocol
-  vpc_id      = local.vpc_id
-  target_type = "ip"
+  count                = local.create_lb ? 1 : 0
+  name                 = local.target_group_name
+  port                 = var.container_port
+  protocol             = local.container_protocol
+  vpc_id               = local.vpc_id
+  target_type          = "ip"
+  deregistration_delay = var.lb_deregistration_delay
 
   health_check {
     healthy_threshold   = var.healthcheck_healthy_threshold

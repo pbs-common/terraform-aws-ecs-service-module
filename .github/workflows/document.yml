@@ -9,6 +9,8 @@ on:
     types: [opened, synchronize]
     branches:
       - main
+    paths:
+      - '*.tf'
 concurrency: document-${{ github.base_ref }}
 jobs:
   document:

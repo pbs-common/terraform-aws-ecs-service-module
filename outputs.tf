@@ -53,11 +53,6 @@ output "image_tag" {
   value       = var.image_tag
 }
 
-output "virtual_node_name" {
-  description = "Name of the virtual node"
-  value       = local.virtual_node_name
-}
-
 output "https_listener_arn" {
   description = "ARN of the HTTPS listener. Useful when adding extra ACM certificates to the listener."
   value       = local.create_https_listeners ? one(aws_lb_listener.https[*].arn) : null

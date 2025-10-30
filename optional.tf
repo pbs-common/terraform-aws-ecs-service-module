@@ -86,6 +86,12 @@ variable "target_memory_utilization" {
   type        = number
 }
 
+variable "target_requests_count_per_target" {
+  description = "Target requests count per targe for scaling"
+  default     = 800
+  type        = number
+}
+
 variable "scale_up_cpu_threshold" {
   description = "Threshold at which CPU utilization triggers a scale up event"
   default     = 80
@@ -108,6 +114,24 @@ variable "scale_down_memory_threshold" {
   description = "Threshold at which Memory utilization triggers a scale down event"
   default     = 20
   type        = number
+}
+
+variable "scale_up_requests_count_per_target" {
+  description = "Threshold at which Request count per target triggers a scale up event"
+  default     = 140
+  type        = number
+}
+
+variable "scale_down_requests_count_per_target" {
+  description = "Threshold at which Request count per target triggers a scale down event"
+  default     = 70
+  type        = number
+}
+
+variable "requests_count_scaling" {
+  description = "Use RequestCountPerTarget CloudWatch metric for scaling"
+  default     = false
+  type        = bool
 }
 
 variable "container_protocol" {
@@ -155,29 +179,6 @@ variable "healthcheck_interval" {
 variable "healthcheck_matcher" {
   description = "The HTTP codes to use when checking for a successful response from a target"
   default     = 200
-  type        = number
-}
-variable "service_healthcheck_healthy_threshold" {
-  description = "The number of successful checks before a service is considered healthy"
-  default     = 2
-  type        = number
-}
-
-variable "service_healthcheck_unhealthy_threshold" {
-  description = "The number of unsuccessful checks before a service is considered unhealthy"
-  default     = 2
-  type        = number
-}
-
-variable "service_healthcheck_timeout" {
-  description = "The time, in milliseconds, before a timeout on the health check of the service"
-  default     = 3000
-  type        = number
-}
-
-variable "service_healthcheck_interval" {
-  description = "The time, in milliseconds, between health checks of the service"
-  default     = 6000
   type        = number
 }
 
@@ -325,6 +326,12 @@ variable "https_port" {
   type        = number
 }
 
+variable "http_redirect" {
+  description = "Redirect HTTP traffic to HTTPS. If set to false, HTTP traffic will be forwarded to the target groups"
+  default     = true
+  type        = bool
+}
+
 variable "tcp_port" {
   description = "NLB TCP port number. Ignored for application load balancers."
   default     = null
@@ -332,13 +339,25 @@ variable "tcp_port" {
 }
 
 variable "role_policy_json" {
-  description = "the policy to apply for this service. Defaults to a valid ECS role policy if null."
+  description = "(optional) IAM policy to attach to role used for this task and replace defaults"
   default     = null
   type        = string
 }
 
 variable "task_execution_role_policy_json" {
-  description = "IAM policy to attach to task execution role used for this task"
+  description = "(optional) IAM policy to attach to task execution role used for this task and replace defaults"
+  default     = null
+  type        = string
+}
+
+variable "extra_role_policy_json" {
+  description = "(optional) Extra IAM policy to attach to role used for this task without replacing defaults"
+  default     = null
+  type        = string
+}
+
+variable "extra_task_execution_role_policy_json" {
+  description = "(optional) Extra IAM policy to attach to task execution role used for this task without replacing defaults"
   default     = null
   type        = string
 }
@@ -383,17 +402,6 @@ variable "namespace_id" {
   description = "Namespace ID."
   type        = string
   default     = null
-}
-
-variable "namespace" {
-  description = "Namespace. If null, defaults to `var.application-tag`."
-  default     = null
-  type        = string
-}
-variable "virtual_node_protocol" {
-  description = "Protocol for the virtual node"
-  default     = "http"
-  type        = string
 }
 
 variable "dns_evaluate_target_health" {
