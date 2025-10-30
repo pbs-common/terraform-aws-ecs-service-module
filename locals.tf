@@ -22,7 +22,7 @@ locals {
   cnames                               = local.create_virtual_node ? [] : var.cnames != null ? var.cnames : [local.name]
   aliases                              = local.create_virtual_node ? [] : var.aliases != null ? var.aliases : ["${local.name}.${local.null_safe_hosted_zone}"]
   app_dns_record_count                 = local.create_lb ? length(local.cnames) : 0
-  domain_name                          = !local.create_lb ? null : local.app_dns_record_count == 0 ? one(aws_lb.lb[*].dns_name) : one(aws_route53_record.app[*].fqdn)
+  domain_name                          = !local.create_lb ? null : local.app_dns_record_count == 0 ? aws_lb.lb[0].dns_name : aws_route53_record.app[0].fqdn
   create_http_listeners                = local.create_lb && var.load_balancer_type == "application"
   create_https_listeners               = local.create_lb && var.load_balancer_type == "application" && !var.is_hosted_zone_private
   only_create_http_listener            = local.create_http_listeners && !local.create_https_listeners
