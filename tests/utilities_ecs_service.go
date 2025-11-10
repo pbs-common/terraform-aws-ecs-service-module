@@ -83,24 +83,24 @@ func testECSService(t *testing.T, variant string) {
 		}
 		terraform.Apply(t, terraformTargetSGOptions)
 
-	terraform.Apply(t, terraformOptions)
+		terraform.Apply(t, terraformOptions)
 
-	if variant != "no-lb" {
-		domainName := terraform.Output(t, terraformOptions, "domain_name")
+		if variant != "no-lb" {
+			domainName := terraform.Output(t, terraformOptions, "domain_name")
 
-		assert.Equal(t, expectedDomainName, domainName)
+			assert.Equal(t, expectedDomainName, domainName)
 
-		if variant != "private" {
-			indexURL := fmt.Sprintf("https://%s/", domainName)
-			expectedIndex, err := getFileAsString("nginx-index.html")
+			if variant != "private" {
+				indexURL := fmt.Sprintf("https://%s/", domainName)
+				expectedIndex, err := getFileAsString("nginx-index.html")
 
-			if err != nil {
-				t.Fatal(err)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				httpHelper.HttpGetWithRetry(t, indexURL, nil, 200, expectedIndex, 25, 1*time.Minute)
+
 			}
-
-			httpHelper.HttpGetWithRetry(t, indexURL, nil, 200, expectedIndex, 25, 1*time.Minute)
-
 		}
 	}
-}
 }
