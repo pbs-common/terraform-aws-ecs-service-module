@@ -418,7 +418,7 @@ variable "alpn_policy" {
 
 variable "alb_ssl_policy" {
   description = "SSL policy to use for an Application Load Balancer application."
-  default     = "ELBSecurityPolicy-2016-08"
+  default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
   type        = string
 }
 
