@@ -469,3 +469,9 @@ variable "create_attach_eip_to_nlb" {
   default     = false
   type        = bool
 }
+
+variable "custom_http_headers" {
+    description = "Custom HTTP headers  for application load balancers. Format should be a list of maps with `name` and `value` keys. e.g. [{ name = \"header1\", value = \"value1\"}, { name = \"header2\", value = \"value2\"}]"
+    default     = []
+    type        = list(object({ name = string, value = string }))
+}
