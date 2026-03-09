@@ -180,6 +180,16 @@ resource "aws_lb_listener_rule" "http_application_rule" {
       values = [element(local.aliases, count.index)]
     }
   }
+
+  dynamic "condition" {
+    for_each = length(var.custom_http_headers) > 0 ? var.custom_http_headers : []
+    content {
+      http_header {
+        http_header_name = condition.value.name
+        values           = [condition.value.value]
+      }
+    }
+  }
 }
 
 resource "aws_lb_listener_rule" "https_application_rule" {
@@ -195,6 +205,16 @@ resource "aws_lb_listener_rule" "https_application_rule" {
   condition {
     host_header {
       values = [element(local.aliases, count.index)]
+    }
+  }
+
+  dynamic "condition" {
+    for_each = length(var.custom_http_headers) > 0 ? var.custom_http_headers : []
+    content {
+      http_header {
+        http_header_name = condition.value.name
+        values           = [condition.value.value]
+      }
     }
   }
 }
