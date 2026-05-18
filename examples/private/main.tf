@@ -2,7 +2,7 @@ module "service" {
   source = "../.."
 
   hosted_zone            = var.hosted_zone
-  public_service         = false
+  lb_scheme              = "internal"
   is_hosted_zone_private = true
 
   organization = var.organization

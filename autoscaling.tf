@@ -282,3 +282,109 @@ resource "aws_appautoscaling_policy" "requests_count_scale_down_policy" {
     }
   }
 }
+
+# ── SQS-based scaling (scaling_approach = "sqs") ─────────────────────────────
+
+resource "aws_appautoscaling_policy" "sqs_scale_up_policy" {
+  count              = var.scaling_approach == "sqs" ? 1 : 0
+  name               = "${local.name}-sqs-scale-up-policy"
+  resource_id        = "service/${local.cluster}/${aws_ecs_service.service.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = var.scale_up_cooldown
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      metric_interval_lower_bound = 0
+      scaling_adjustment          = var.scale_up_adjustment
+    }
+  }
+}
+
+resource "aws_appautoscaling_policy" "sqs_scale_down_policy" {
+  count              = var.scaling_approach == "sqs" ? 1 : 0
+  name               = "${local.name}-sqs-scale-down-policy"
+  resource_id        = "service/${local.cluster}/${aws_ecs_service.service.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = var.scale_down_cooldown
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      metric_interval_upper_bound = 0
+      scaling_adjustment          = var.scale_down_adjustment
+    }
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "sqs_high" {
+  count               = var.scaling_approach == "sqs" ? 1 : 0
+  alarm_name          = "${local.name}-sqs-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  threshold           = var.sqs_visible_up_threshold
+  alarm_description   = "Alarm when SQS messages exceed threshold for ${local.name}"
+  treat_missing_data  = "missing"
+
+  metric_query {
+    id          = "sqs_messages"
+    return_data = true
+    label       = "SQS Messages"
+    metric {
+      namespace   = "AWS/SQS"
+      metric_name = "ApproximateNumberOfMessagesVisible"
+      period      = 60
+      stat        = "Sum"
+      dimensions = {
+        QueueName = var.sqs_queue_name
+      }
+    }
+  }
+
+  actions_enabled = true
+  alarm_actions   = [aws_appautoscaling_policy.sqs_scale_up_policy[0].arn]
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name} CW Metric Alarm SQS High" },
+  )
+}
+
+resource "aws_cloudwatch_metric_alarm" "sqs_low" {
+  count               = var.scaling_approach == "sqs" ? 1 : 0
+  alarm_name          = "${local.name}-sqs-low"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = 1
+  threshold           = var.sqs_visible_down_threshold
+  alarm_description   = "Alarm when SQS messages are below threshold for ${local.name}"
+  treat_missing_data  = "missing"
+
+  metric_query {
+    id          = "sqs_messages"
+    return_data = true
+    label       = "SQS Messages"
+    metric {
+      namespace   = "AWS/SQS"
+      metric_name = "ApproximateNumberOfMessagesVisible"
+      period      = 60
+      stat        = "Sum"
+      dimensions = {
+        QueueName = var.sqs_queue_name
+      }
+    }
+  }
+
+  actions_enabled = true
+  alarm_actions   = [aws_appautoscaling_policy.sqs_scale_down_policy[0].arn]
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name} CW Metric Alarm SQS Low" },
+  )
+}

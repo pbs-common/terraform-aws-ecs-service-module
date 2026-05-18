@@ -65,12 +65,12 @@ variable "scaling_evaluation_periods" {
 }
 
 variable "scaling_approach" {
-  description = "Approach to take with scaling. Valid values are `target_tracking` and `step_scaling`"
+  description = "Approach to take with scaling. Valid values are `target_tracking`, `step_scaling` and `sqs`"
   default     = "target_tracking"
   type        = string
   validation {
-    condition     = contains(["target_tracking", "step_scaling"], var.scaling_approach)
-    error_message = "Scaling approach must be either `target_tracking` or `step_scaling`."
+    condition     = contains(["target_tracking", "step_scaling", "sqs"], var.scaling_approach)
+    error_message = "Scaling approach must be `target_tracking`, `step_scaling` or `sqs`."
   }
 }
 
@@ -218,12 +218,6 @@ variable "cluster" {
   type        = string
 }
 
-variable "assign_public_ip" {
-  description = "Assign public IP to the service"
-  default     = true
-  type        = bool
-}
-
 variable "target_group_name" {
   description = "Target group name. Will default to product if not defined."
   default     = null
@@ -254,12 +248,6 @@ variable "task_def_arn" {
   type        = string
 }
 
-variable "subnets" {
-  description = "Subnets for the service. If null, private and public subnets will be looked up based on environment tag and one will be selected based on public_service."
-  default     = null
-  type        = list(string)
-}
-
 variable "private_subnets" {
   description = "Private subnets for the service. If null, private subnets will be looked up based on environment tag and will be selected based on public_service."
   default     = null
@@ -272,10 +260,24 @@ variable "public_subnets" {
   type        = list(string)
 }
 
-variable "public_service" {
-  description = "Service should be provisioned in public subnet. Ignored if subnets defined."
-  default     = false
-  type        = bool
+variable "lb_scheme" {
+  description = "Scheme for the load balancer and subnet selection. \"public\" creates an internet-facing LB in public subnets. \"internal\" creates an internal LB in private subnets."
+  default     = "public"
+  type        = string
+  validation {
+    condition     = contains(["public", "internal"], var.lb_scheme)
+    error_message = "lb_scheme must be either \"public\" or \"internal\"."
+  }
+}
+
+variable "task_subnet_scheme" {
+  description = "Subnet placement for ECS tasks. \"private\" (default) places tasks in private subnets. \"public\" places tasks in public subnets. Only respected when lb_scheme is \"public\"; tasks are always private when lb_scheme is \"internal\"."
+  default     = "private"
+  type        = string
+  validation {
+    condition     = contains(["private", "public"], var.task_subnet_scheme)
+    error_message = "task_subnet_scheme must be either \"private\" or \"public\"."
+  }
 }
 
 variable "internal" {
@@ -471,7 +473,25 @@ variable "create_attach_eip_to_nlb" {
 }
 
 variable "custom_http_headers" {
-    description = "Custom HTTP headers  for application load balancers. Format should be a list of maps with `name` and `value` keys. e.g. [{ name = \"header1\", value = \"value1\"}, { name = \"header2\", value = \"value2\"}]"
-    default     = []
-    type        = list(object({ name = string, value = string }))
+  description = "Custom HTTP headers  for application load balancers. Format should be a list of maps with `name` and `value` keys. e.g. [{ name = \"header1\", value = \"value1\"}, { name = \"header2\", value = \"value2\"}]"
+  default     = []
+  type        = list(object({ name = string, value = string }))
+}
+
+variable "sqs_queue_name" {
+  description = "Name of the SQS queue to use for SQS-based scaling. Required when scaling_approach is `sqs`"
+  default     = ""
+  type        = string
+}
+
+variable "sqs_visible_up_threshold" {
+  description = "Number of visible SQS messages that triggers a scale-up event"
+  default     = 100
+  type        = number
+}
+
+variable "sqs_visible_down_threshold" {
+  description = "Number of visible SQS messages below which a scale-down event is triggered"
+  default     = 10
+  type        = number
 }

@@ -1,8 +1,7 @@
 module "service" {
   source = "../.."
 
-  hosted_zone    = var.hosted_zone
-  public_service = true
+  hosted_zone = var.hosted_zone
 
   organization = var.organization
   environment  = var.environment
