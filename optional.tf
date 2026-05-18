@@ -249,13 +249,13 @@ variable "task_def_arn" {
 }
 
 variable "private_subnets" {
-  description = "Private subnets for the service. If null, private subnets will be looked up based on environment tag and will be selected based on public_service."
+  description = "Private subnets for the service. If null, private subnets will be looked up based on environment tag."
   default     = null
   type        = list(string)
 }
 
 variable "public_subnets" {
-  description = "Public subnets for the service. If null, public subnets will be looked up based on environment tag and will be selected based on public_service."
+  description = "Public subnets for the service. If null, public subnets will be looked up based on environment tag."
   default     = null
   type        = list(string)
 }

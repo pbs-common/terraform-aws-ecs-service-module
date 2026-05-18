@@ -16,7 +16,7 @@ More information can be found on these install methods and more in [the document
 
 This module provisions a basic ECS service. Provide the `image_repo` and `image_tag` corresponding to the Docker image you would like to run, and everything from the ECS task definition to the DNS for the load balancer will be provisioned so that you can access your application.
 
-To make the service provisioned here private, set `public_service` to `false`. This will set up a DNS entry in a private hosted zone, and adjust the load balancer associated with the service such that it is an internal load balancer.
+To make the service provisioned here private, set `lb_scheme` to `"internal"`. This will create an internal load balancer in private subnets. By default, ECS tasks are placed in private subnets regardless of `lb_scheme`. Use `task_subnet_scheme = "public"` to place tasks in public subnets (only respected when `lb_scheme = "public"`).
 
 To switch the kind of load balancer used from an application load balancer to a network load balancer, set `load_balancer_type` to `network`.
 
