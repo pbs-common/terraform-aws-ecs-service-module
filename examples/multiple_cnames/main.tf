@@ -7,7 +7,6 @@ module "service" {
   source = "../.."
 
   hosted_zone    = var.hosted_zone
-  public_service = true
   cnames = [
     "example-ecs-service-multiple-cnames",
     "example-ecs-service-multiple-cnames2",

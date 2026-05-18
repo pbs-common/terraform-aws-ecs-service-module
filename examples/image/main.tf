@@ -2,7 +2,6 @@ module "service" {
   source = "../.."
 
   hosted_zone    = var.hosted_zone
-  public_service = true
 
   image_repo = "nginx"
   image_tag  = "latest"

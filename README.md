@@ -16,7 +16,7 @@ More information can be found on these install methods and more in [the document
 
 This module provisions a basic ECS service. Provide the `image_repo` and `image_tag` corresponding to the Docker image you would like to run, and everything from the ECS task definition to the DNS for the load balancer will be provisioned so that you can access your application.
 
-To make the service provisioned here private, set `public_service` to `false`. This will set up a DNS entry in a private hosted zone, and adjust the load balancer associated with the service such that it is an internal load balancer.
+To make the service provisioned here private, set `lb_scheme` to `"internal"`. This will create an internal load balancer in private subnets. By default, ECS tasks are placed in private subnets regardless of `lb_scheme`. Use `task_subnet_scheme = "public"` to place tasks in public subnets (only respected when `lb_scheme = "public"`).
 
 To switch the kind of load balancer used from an application load balancer to a network load balancer, set `load_balancer_type` to `network`.
 
@@ -172,7 +172,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_alb_ssl_policy"></a> [alb\_ssl\_policy](#input\_alb\_ssl\_policy) | SSL policy to use for an Application Load Balancer application. | `string` | `"ELBSecurityPolicy-TLS13-1-2-2021-06"` | no |
 | <a name="input_aliases"></a> [aliases](#input\_aliases) | CNAME(s) that are allowed to be used for this service. Default is `product`.`hosted_zone`. e.g. [product.example.com] --> [product.example.com] | `list(string)` | `null` | no |
 | <a name="input_alpn_policy"></a> [alpn\_policy](#input\_alpn\_policy) | Name of the Application-Layer Protocol Negotiation (ALPN) policy. Can be set if protocol is TLS. Valid values are HTTP1Only, HTTP2Only, HTTP2Optional, HTTP2Preferred, and None. | `string` | `"HTTP2Preferred"` | no |
-| <a name="input_assign_public_ip"></a> [assign\_public\_ip](#input\_assign\_public\_ip) | Assign public IP to the service | `bool` | `true` | no |
+
 | <a name="input_awslogs_driver_mode"></a> [awslogs\_driver\_mode](#input\_awslogs\_driver\_mode) | (optional) awslogs driver mode. Set this to `blocking` if you would rather have an outage than lose logs. | `string` | `"non-blocking"` | no |
 | <a name="input_cluster"></a> [cluster](#input\_cluster) | Name of the ECS Cluster this service runs in. If null, one will be created based on the product | `string` | `null` | no |
 | <a name="input_cluster_ec2_backed"></a> [cluster\_ec2\_backed](#input\_cluster\_ec2\_backed) | Whether or not to provision an autoscaled EC2 fleet to back the cluster | `bool` | `false` | no |
@@ -231,6 +231,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_lb_deregistration_delay"></a> [lb\_deregistration\_delay](#input\_lb\_deregistration\_delay) | (optional) task deregistration delay for the load balancer | `number` | `300` | no |
 | <a name="input_load_balancer_name"></a> [load\_balancer\_name](#input\_load\_balancer\_name) | Load balancer name. Will default to product if not defined. | `string` | `null` | no |
 | <a name="input_load_balancer_sg_name"></a> [load\_balancer\_sg\_name](#input\_load\_balancer\_sg\_name) | Prefix for the name of the load balancer security group. If null, will use `${local.load_balancer_name}-sg-`. | `string` | `null` | no |
+| <a name="input_lb_scheme"></a> [lb\_scheme](#input\_lb\_scheme) | Scheme for the load balancer and subnet selection. `"public"` creates an internet-facing LB in public subnets. `"internal"` creates an internal LB in private subnets. | `string` | `"public"` | no |
 | <a name="input_load_balancer_type"></a> [load\_balancer\_type](#input\_load\_balancer\_type) | Type of load balancer to use. application, network or gateway. | `string` | `"application"` | no |
 | <a name="input_log_group_class"></a> [log\_group\_class](#input\_log\_group\_class) | (Optional) log class of the log group. Possible values are: STANDARD or INFREQUENT\_ACCESS | `string` | `"INFREQUENT_ACCESS"` | no |
 | <a name="input_log_group_name"></a> [log\_group\_name](#input\_log\_group\_name) | (optional) name for the log group | `string` | `null` | no |
@@ -246,10 +247,9 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_nlb_protocol"></a> [nlb\_protocol](#input\_nlb\_protocol) | Protocol for the network load balancer used in this service. Ignored for application load balancers. | `string` | `"TLS"` | no |
 | <a name="input_nlb_ssl_policy"></a> [nlb\_ssl\_policy](#input\_nlb\_ssl\_policy) | SSL policy to use for a Network Load Balancer application. | `string` | `"ELBSecurityPolicy-TLS13-1-2-2021-06"` | no |
 | <a name="input_platform_version"></a> [platform\_version](#input\_platform\_version) | The platform version on which to run your service | `string` | `"LATEST"` | no |
-| <a name="input_private_subnets"></a> [private\_subnets](#input\_private\_subnets) | Private subnets for the service. If null, private subnets will be looked up based on environment tag and will be selected based on public\_service. | `list(string)` | `null` | no |
+| <a name="input_private_subnets"></a> [private\_subnets](#input\_private\_subnets) | Private subnets for the service. If null, private subnets will be looked up based on environment tag. | `list(string)` | `null` | no |
 | <a name="input_propagate_tags"></a> [propagate\_tags](#input\_propagate\_tags) | Specifies whether to propagate the tags from the task definition or the service to the tasks | `string` | `"SERVICE"` | no |
-| <a name="input_public_service"></a> [public\_service](#input\_public\_service) | Service should be provisioned in public subnet. Ignored if subnets defined. | `bool` | `false` | no |
-| <a name="input_public_subnets"></a> [public\_subnets](#input\_public\_subnets) | Public subnets for the service. If null, public subnets will be looked up based on environment tag and will be selected based on public\_service. | `list(string)` | `null` | no |
+| <a name="input_public_subnets"></a> [public\_subnets](#input\_public\_subnets) | Public subnets for the service. If null, public subnets will be looked up based on environment tag. | `list(string)` | `null` | no |
 | <a name="input_pythonpath"></a> [pythonpath](#input\_pythonpath) | (optional) PYTHONPATH of the application; required by the cwagent sidecar container | `string` | `":"` | no |
 | <a name="input_requests_count_scaling"></a> [requests\_count\_scaling](#input\_requests\_count\_scaling) | Use RequestCountPerTarget CloudWatch metric for scaling | `bool` | `false` | no |
 | <a name="input_requires_compatibilities"></a> [requires\_compatibilities](#input\_requires\_compatibilities) | (optional) capabilities that the task requires | `set(string)` | <pre>[<br/>  "FARGATE"<br/>]</pre> | no |
@@ -269,14 +269,17 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_scale_up_cpu_threshold"></a> [scale\_up\_cpu\_threshold](#input\_scale\_up\_cpu\_threshold) | Threshold at which CPU utilization triggers a scale up event | `number` | `80` | no |
 | <a name="input_scale_up_memory_threshold"></a> [scale\_up\_memory\_threshold](#input\_scale\_up\_memory\_threshold) | Threshold at which Memory utilization triggers a scale up event | `number` | `80` | no |
 | <a name="input_scale_up_requests_count_per_target"></a> [scale\_up\_requests\_count\_per\_target](#input\_scale\_up\_requests\_count\_per\_target) | Threshold at which Request count per target triggers a scale up event | `number` | `140` | no |
-| <a name="input_scaling_approach"></a> [scaling\_approach](#input\_scaling\_approach) | Approach to take with scaling. Valid values are `target_tracking` and `step_scaling` | `string` | `"target_tracking"` | no |
+| <a name="input_scaling_approach"></a> [scaling\_approach](#input\_scaling\_approach) | Approach to take with scaling. Valid values are `target_tracking`, `step_scaling` and `sqs` | `string` | `"target_tracking"` | no |
 | <a name="input_scaling_evaluation_period"></a> [scaling\_evaluation\_period](#input\_scaling\_evaluation\_period) | Scaling evaluation period in seconds | `number` | `60` | no |
 | <a name="input_scaling_evaluation_periods"></a> [scaling\_evaluation\_periods](#input\_scaling\_evaluation\_periods) | Number of periods over which data is compared to the threshold | `number` | `1` | no |
 | <a name="input_secrets"></a> [secrets](#input\_secrets) | (optional) secrets to be passed to the container. By default none is passed | <pre>set(object({<br/>    name      = string<br/>    valueFrom = string<br/>  }))</pre> | `[]` | no |
+| <a name="input_sqs_queue_name"></a> [sqs\_queue\_name](#input\_sqs\_queue\_name) | Name of the SQS queue to use for SQS-based scaling. Required when scaling\_approach is `sqs` | `string` | `""` | no |
+| <a name="input_sqs_visible_down_threshold"></a> [sqs\_visible\_down\_threshold](#input\_sqs\_visible\_down\_threshold) | Number of visible SQS messages below which a scale-down event is triggered | `number` | `10` | no |
+| <a name="input_sqs_visible_up_threshold"></a> [sqs\_visible\_up\_threshold](#input\_sqs\_visible\_up\_threshold) | Number of visible SQS messages that triggers a scale-up event | `number` | `100` | no |
 | <a name="input_service_sg_name"></a> [service\_sg\_name](#input\_service\_sg\_name) | Prefix for the name of the service security group. If null, will use `${local.name}-service-sg-`. | `string` | `null` | no |
 | <a name="input_ssm_path"></a> [ssm\_path](#input\_ssm\_path) | (optional) path to the ssm parameters you want pulled into your container during execution of the entrypoint | `string` | `null` | no |
-| <a name="input_subnets"></a> [subnets](#input\_subnets) | Subnets for the service. If null, private and public subnets will be looked up based on environment tag and one will be selected based on public\_service. | `list(string)` | `null` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Extra tags | `map(string)` | `{}` | no |
+| <a name="input_task_subnet_scheme"></a> [task\_subnet\_scheme](#input\_task\_subnet\_scheme) | Subnet placement for ECS tasks. `"private"` (default) places tasks in private subnets. `"public"` places tasks in public subnets. Only respected when lb\_scheme is `"public"`; tasks are always private when lb\_scheme is `"internal"`. | `string` | `"private"` | no |
 | <a name="input_target_cpu_utilization"></a> [target\_cpu\_utilization](#input\_target\_cpu\_utilization) | Target CPU utilization for scaling | `number` | `50` | no |
 | <a name="input_target_group_name"></a> [target\_group\_name](#input\_target\_group\_name) | Target group name. Will default to product if not defined. | `string` | `null` | no |
 | <a name="input_target_memory_utilization"></a> [target\_memory\_utilization](#input\_target\_memory\_utilization) | Target memory utilization for scaling | `number` | `50` | no |

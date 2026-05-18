@@ -12,7 +12,7 @@ data "aws_vpc" "vpc" {
 }
 
 data "aws_subnets" "public_subnets" {
-  count = var.public_subnets == null || var.subnets == null ? 1 : 0
+  count = var.public_subnets == null ? 1 : 0
   filter {
     name   = "vpc-id"
     values = [local.vpc_id]
@@ -24,7 +24,7 @@ data "aws_subnets" "public_subnets" {
 }
 
 data "aws_subnets" "private_subnets" {
-  count = var.private_subnets == null || var.subnets == null ? 1 : 0
+  count = var.private_subnets == null ? 1 : 0
   filter {
     name   = "vpc-id"
     values = [local.vpc_id]
