@@ -1,7 +1,7 @@
 module "service" {
   source = "../.."
 
-  hosted_zone    = var.hosted_zone
+  hosted_zone = var.hosted_zone
 
   runtime_platform = {
     cpu_architecture = "ARM64"

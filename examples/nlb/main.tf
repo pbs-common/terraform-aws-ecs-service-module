@@ -1,7 +1,7 @@
 module "service" {
   source = "../.."
 
-  hosted_zone    = var.hosted_zone
+  hosted_zone = var.hosted_zone
 
   load_balancer_type = "network"
 

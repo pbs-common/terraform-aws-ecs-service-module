@@ -6,7 +6,7 @@ variable "hosted_zone" {
 module "service" {
   source = "../.."
 
-  hosted_zone    = var.hosted_zone
+  hosted_zone = var.hosted_zone
   cnames = [
     "example-ecs-service-multiple-cnames",
     "example-ecs-service-multiple-cnames2",
