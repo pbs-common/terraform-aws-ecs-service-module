@@ -200,9 +200,15 @@ variable "platform_version" {
   type        = string
 }
 
-variable "restricted_cidr_blocks" {
-  description = "CIDR blocks to receive restricted service access. If empty, no CIDRs will be allowed to connect."
+variable "lb_ingress_cidr_blocks" {
+  description = "CIDR blocks allowed to reach the load balancer (HTTP/HTTPS ingress). Defaults to open internet access."
   default     = ["0.0.0.0/0"]
+  type        = list(string)
+}
+
+variable "virtual_node_cidr_blocks" {
+  description = "CIDR blocks allowed to connect directly to the ECS task (App Mesh virtual node). Empty by default — only set for AppMesh/service mesh use cases."
+  default     = []
   type        = list(string)
 }
 
