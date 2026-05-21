@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=8.0.1
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=8.0.1"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=8.0.1"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -73,7 +73,7 @@ module "service" {
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`8.0.1`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -96,7 +96,7 @@ Below is automatically generated documentation on this Terraform module using [t
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.44.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.45.0 |
 
 ## Modules
 
@@ -232,6 +232,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_is_hosted_zone_private"></a> [is\_hosted\_zone\_private](#input\_is\_hosted\_zone\_private) | Is the route53 zone private or not. | `bool` | `false` | no |
 | <a name="input_launch_type"></a> [launch\_type](#input\_launch\_type) | The launch type on which to run your service | `string` | `"FARGATE"` | no |
 | <a name="input_lb_deregistration_delay"></a> [lb\_deregistration\_delay](#input\_lb\_deregistration\_delay) | (optional) task deregistration delay for the load balancer | `number` | `300` | no |
+| <a name="input_lb_ingress_cidr_blocks"></a> [lb\_ingress\_cidr\_blocks](#input\_lb\_ingress\_cidr\_blocks) | CIDR blocks allowed to reach the load balancer (HTTP/HTTPS ingress). Defaults to open internet access. | `list(string)` | <pre>[<br/>  "0.0.0.0/0"<br/>]</pre> | no |
 | <a name="input_lb_scheme"></a> [lb\_scheme](#input\_lb\_scheme) | Scheme for the load balancer and subnet selection. "public" creates an internet-facing LB in public subnets. "internal" creates an internal LB in private subnets. | `string` | `"public"` | no |
 | <a name="input_load_balancer_name"></a> [load\_balancer\_name](#input\_load\_balancer\_name) | Load balancer name. Will default to product if not defined. | `string` | `null` | no |
 | <a name="input_load_balancer_sg_name"></a> [load\_balancer\_sg\_name](#input\_load\_balancer\_sg\_name) | Prefix for the name of the load balancer security group. If null, will use `${local.load_balancer_name}-sg-`. | `string` | `null` | no |
@@ -256,7 +257,6 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_pythonpath"></a> [pythonpath](#input\_pythonpath) | (optional) PYTHONPATH of the application; required by the cwagent sidecar container | `string` | `":"` | no |
 | <a name="input_requests_count_scaling"></a> [requests\_count\_scaling](#input\_requests\_count\_scaling) | Use RequestCountPerTarget CloudWatch metric for scaling | `bool` | `false` | no |
 | <a name="input_requires_compatibilities"></a> [requires\_compatibilities](#input\_requires\_compatibilities) | (optional) capabilities that the task requires | `set(string)` | <pre>[<br/>  "FARGATE"<br/>]</pre> | no |
-| <a name="input_restricted_cidr_blocks"></a> [restricted\_cidr\_blocks](#input\_restricted\_cidr\_blocks) | CIDR blocks to receive restricted service access. If empty, no CIDRs will be allowed to connect. | `list(string)` | <pre>[<br/>  "0.0.0.0/0"<br/>]</pre> | no |
 | <a name="input_restricted_sg"></a> [restricted\_sg](#input\_restricted\_sg) | SG to receive restricted service access. If null, no sg will be configured to connect | `string` | `null` | no |
 | <a name="input_retention_in_days"></a> [retention\_in\_days](#input\_retention\_in\_days) | (optional) log retention in days | `number` | `7` | no |
 | <a name="input_role_policy_json"></a> [role\_policy\_json](#input\_role\_policy\_json) | (optional) IAM policy to attach to role used for this task and replace defaults | `string` | `null` | no |
@@ -295,6 +295,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_use_xray_sidecar"></a> [use\_xray\_sidecar](#input\_use\_xray\_sidecar) | (optional) if set to null, will use the sidecar to trace the task if envoy is used, as that automatically implements tracing configs. | `bool` | `null` | no |
 | <a name="input_virtual_gateway"></a> [virtual\_gateway](#input\_virtual\_gateway) | (optional) the name of the virtual gateway associated with this task definition. If null, ignored | `string` | `null` | no |
 | <a name="input_virtual_node"></a> [virtual\_node](#input\_virtual\_node) | (optional) the name of the virtual node associated with this task definition. Ignored if virtual\_gateway set. If null, ignored | `string` | `null` | no |
+| <a name="input_virtual_node_cidr_blocks"></a> [virtual\_node\_cidr\_blocks](#input\_virtual\_node\_cidr\_blocks) | CIDR blocks allowed to connect directly to the ECS task (App Mesh virtual node). Empty by default — only set for AppMesh/service mesh use cases. | `list(string)` | `[]` | no |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | VPC ID. If null, one will be looked up based on environment tag. | `string` | `null` | no |
 
 ## Outputs

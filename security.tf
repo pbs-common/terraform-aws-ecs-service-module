@@ -36,7 +36,7 @@ resource "aws_security_group_rule" "user_to_lb_http_cidrs" {
   from_port = var.http_port
   to_port   = var.http_port
 
-  cidr_blocks = var.restricted_cidr_blocks
+  cidr_blocks = var.lb_ingress_cidr_blocks
 }
 
 resource "aws_security_group_rule" "user_to_lb_http_sgs" {
@@ -62,7 +62,7 @@ resource "aws_security_group_rule" "user_to_lb_https_cidrs" {
   from_port = var.https_port
   to_port   = var.https_port
 
-  cidr_blocks = var.restricted_cidr_blocks
+  cidr_blocks = var.lb_ingress_cidr_blocks
 }
 
 resource "aws_security_group_rule" "user_to_lb_https_sgs" {
@@ -88,7 +88,7 @@ resource "aws_security_group_rule" "user_to_nlb_cidrs" {
   from_port = var.tcp_port
   to_port   = var.tcp_port
 
-  cidr_blocks = var.restricted_cidr_blocks
+  cidr_blocks = var.lb_ingress_cidr_blocks
 }
 
 resource "aws_security_group_rule" "user_to_nlb_sgs" {
@@ -153,7 +153,7 @@ resource "aws_security_group_rule" "nlb_service_access_cidr" {
   from_port = var.container_port
   to_port   = var.container_port
 
-  cidr_blocks = var.restricted_cidr_blocks
+  cidr_blocks = var.lb_ingress_cidr_blocks
 }
 
 resource "aws_security_group_rule" "nlb_service_access_sg" {
@@ -179,7 +179,7 @@ resource "aws_security_group_rule" "user_to_virtual_node_access_cidr" {
   from_port = var.container_port
   to_port   = var.container_port
 
-  cidr_blocks = var.restricted_cidr_blocks
+  cidr_blocks = var.virtual_node_cidr_blocks
 }
 
 resource "aws_security_group_rule" "user_to_virtual_node_access_sg" {
