@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=9.0.0
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=9.0.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=9.0.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -73,7 +73,7 @@ module "service" {
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`9.0.0`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -96,7 +96,7 @@ Below is automatically generated documentation on this Terraform module using [t
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.45.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.46.0 |
 
 ## Modules
 
@@ -136,6 +136,8 @@ Below is automatically generated documentation on this Terraform module using [t
 | [aws_lb_listener.https](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener) | resource |
 | [aws_lb_listener.nlb](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener) | resource |
 | [aws_lb_listener.nlb_tcp](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener) | resource |
+| [aws_lb_listener_rule.extra_http_redirect](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener_rule) | resource |
+| [aws_lb_listener_rule.extra_https_redirect](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener_rule) | resource |
 | [aws_lb_listener_rule.http_application_rule](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener_rule) | resource |
 | [aws_lb_listener_rule.https_application_rule](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener_rule) | resource |
 | [aws_lb_target_group.target_group](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group) | resource |
@@ -199,7 +201,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_cpu_reservation"></a> [cpu\_reservation](#input\_cpu\_reservation) | (optional) CPU reservation for task | `number` | `256` | no |
 | <a name="input_create_attach_eip_to_nlb"></a> [create\_attach\_eip\_to\_nlb](#input\_create\_attach\_eip\_to\_nlb) | Create EIPs for each subnet and attach them to the NLB (public only) | `bool` | `false` | no |
 | <a name="input_create_lb"></a> [create\_lb](#input\_create\_lb) | Create load balancer for service. If creating a virtual node, will ignore value. | `bool` | `true` | no |
-| <a name="input_custom_http_headers"></a> [custom\_http\_headers](#input\_custom\_http\_headers) | Custom HTTP headers  for application load balancers. Format should be a list of maps with `name` and `value` keys. e.g. [{ name = "header1", value = "value1"}, { name = "header2", value = "value2"}] | `list(object({ name = string, value = string }))` | `[]` | no |
+| <a name="input_custom_http_headers"></a> [custom\_http\_headers](#input\_custom\_http\_headers) | (optional) Custom HTTP headers for application load balancers. Format should be a list of maps with `name` and `value` keys. e.g. [{ name = "header1", value = "value1"}, { name = "header2", value = "value2"}] | `list(object({ name = string, value = string }))` | `[]` | no |
 | <a name="input_deployment_maximum_percent"></a> [deployment\_maximum\_percent](#input\_deployment\_maximum\_percent) | The upper limit (as a percentage of the service's desiredCount) of the number of running tasks that can be running in a service during a deployment | `number` | `150` | no |
 | <a name="input_deployment_minimum_healthy_percent"></a> [deployment\_minimum\_healthy\_percent](#input\_deployment\_minimum\_healthy\_percent) | The lower limit (as a percentage of the service's desiredCount) of the number of running tasks that must remain running and healthy in a service during a deployment | `number` | `100` | no |
 | <a name="input_dns_evaluate_target_health"></a> [dns\_evaluate\_target\_health](#input\_dns\_evaluate\_target\_health) | evaluate health of endpoints by querying DNS records | `bool` | `false` | no |
@@ -212,6 +214,8 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_entrypoint"></a> [entrypoint](#input\_entrypoint) | (optional) entrypoint to run in the container as an array. e.g. ["sleep", "10"]. If null, does not set an entrypoint in the task definition. | `list(string)` | `null` | no |
 | <a name="input_env_vars"></a> [env\_vars](#input\_env\_vars) | (optional) environment variables to be passed to the container. By default, only passes SSM\_PATH | `set(map(any))` | `null` | no |
 | <a name="input_envoy_tag"></a> [envoy\_tag](#input\_envoy\_tag) | (optional) tag for envoy. Update periodically if using App Mesh. | `string` | `"v1.23.1.0-prod"` | no |
+| <a name="input_extra_http_listener_rules"></a> [extra\_http\_listener\_rules](#input\_extra\_http\_listener\_rules) | (optional) Additional HTTP listener rules to create for ALB host-header redirects. Each rule specifies host headers to match and redirect configuration. Priority is automatically assigned after application rules. | <pre>list(object({<br/>    host_headers         = list(string)<br/>    redirect_protocol    = optional(string, "HTTP")<br/>    redirect_status_code = optional(string, "HTTP_301")<br/>    redirect_host        = string<br/>    redirect_path        = optional(string, "/")<br/>    redirect_query       = optional(string, "")<br/>  }))</pre> | `[]` | no |
+| <a name="input_extra_https_listener_rules"></a> [extra\_https\_listener\_rules](#input\_extra\_https\_listener\_rules) | (optional) Additional HTTPS listener rules to create for ALB host-header redirects. Each rule specifies host headers to match and redirect configuration. Priority is automatically assigned after application rules. | <pre>list(object({<br/>    host_headers         = list(string)<br/>    redirect_protocol    = optional(string, "HTTPS")<br/>    redirect_status_code = optional(string, "HTTP_301")<br/>    redirect_host        = string<br/>    redirect_path        = optional(string, "/")<br/>    redirect_query       = optional(string, "")<br/>  }))</pre> | `[]` | no |
 | <a name="input_extra_role_policy_json"></a> [extra\_role\_policy\_json](#input\_extra\_role\_policy\_json) | (optional) Extra IAM policy to attach to role used for this task without replacing defaults | `string` | `null` | no |
 | <a name="input_extra_task_execution_role_policy_json"></a> [extra\_task\_execution\_role\_policy\_json](#input\_extra\_task\_execution\_role\_policy\_json) | (optional) Extra IAM policy to attach to task execution role used for this task without replacing defaults | `string` | `null` | no |
 | <a name="input_healthcheck_healthy_threshold"></a> [healthcheck\_healthy\_threshold](#input\_healthcheck\_healthy\_threshold) | The number of consecutive health checks successes required before considering an unhealthy target healthy | `number` | `3` | no |
@@ -306,7 +310,10 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="output_cluster"></a> [cluster](#output\_cluster) | Cluster this service is associated with |
 | <a name="output_container_name"></a> [container\_name](#output\_container\_name) | Name of the main container used by this service |
 | <a name="output_domain_name"></a> [domain\_name](#output\_domain\_name) | One domain name that will resolve to this service. Might not be a valid alias. |
-| <a name="output_https_listener_arn"></a> [https\_listener\_arn](#output\_https\_listener\_arn) | ARN of the HTTPS listener. Useful when adding extra ACM certificates to the listener. |
+| <a name="output_extra_http_listener_rule_arns"></a> [extra\_http\_listener\_rule\_arns](#output\_extra\_http\_listener\_rule\_arns) | ARNs of the extra HTTP listener rules created |
+| <a name="output_extra_https_listener_rule_arns"></a> [extra\_https\_listener\_rule\_arns](#output\_extra\_https\_listener\_rule\_arns) | ARNs of the extra HTTPS listener rules created |
+| <a name="output_http_listener_arn"></a> [http\_listener\_arn](#output\_http\_listener\_arn) | ARN of the HTTP listener. Useful when adding extra listener rules to the listener. |
+| <a name="output_https_listener_arn"></a> [https\_listener\_arn](#output\_https\_listener\_arn) | ARN of the HTTPS listener. Useful when adding extra ACM certificates or listener rules to the listener. |
 | <a name="output_iam_task_role_arn"></a> [iam\_task\_role\_arn](#output\_iam\_task\_role\_arn) | IAM role ARN associated with a task defition, if task defition is created by the ecs service module |
 | <a name="output_image_tag"></a> [image\_tag](#output\_image\_tag) | Tag of the image used by this service |
 | <a name="output_lb_arn"></a> [lb\_arn](#output\_lb\_arn) | Load balancer ARN |
