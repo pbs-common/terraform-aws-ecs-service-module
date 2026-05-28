@@ -479,9 +479,63 @@ variable "create_attach_eip_to_nlb" {
 }
 
 variable "custom_http_headers" {
-  description = "Custom HTTP headers  for application load balancers. Format should be a list of maps with `name` and `value` keys. e.g. [{ name = \"header1\", value = \"value1\"}, { name = \"header2\", value = \"value2\"}]"
+  description = "(optional) Custom HTTP headers for application load balancers. Format should be a list of maps with `name` and `value` keys. e.g. [{ name = \"header1\", value = \"value1\"}, { name = \"header2\", value = \"value2\"}]"
   default     = []
   type        = list(object({ name = string, value = string }))
+}
+
+variable "extra_https_listener_rules" {
+  description = "(optional) Additional HTTPS listener rules to create for ALB host-header redirects. Each rule specifies host headers to match and redirect configuration. Priority is automatically assigned after application rules."
+  default     = []
+  type = list(object({
+    host_headers         = list(string)
+    redirect_protocol    = optional(string, "HTTPS")
+    redirect_status_code = optional(string, "HTTP_301")
+    redirect_host        = string
+    redirect_path        = optional(string, "/")
+    redirect_query       = optional(string, "")
+  }))
+  validation {
+    condition = alltrue([
+      for rule in var.extra_https_listener_rules :
+      contains(["HTTP", "HTTPS"], rule.redirect_protocol)
+    ])
+    error_message = "redirect_protocol must be HTTP or HTTPS."
+  }
+  validation {
+    condition = alltrue([
+      for rule in var.extra_https_listener_rules :
+      contains(["HTTP_301", "HTTP_302", "HTTP_303", "HTTP_307", "HTTP_308"], rule.redirect_status_code)
+    ])
+    error_message = "redirect_status_code must be HTTP_301, HTTP_302, HTTP_303, HTTP_307, or HTTP_308."
+  }
+}
+
+variable "extra_http_listener_rules" {
+  description = "(optional) Additional HTTP listener rules to create for ALB host-header redirects. Each rule specifies host headers to match and redirect configuration. Priority is automatically assigned after application rules."
+  default     = []
+  type = list(object({
+    host_headers         = list(string)
+    redirect_protocol    = optional(string, "HTTP")
+    redirect_status_code = optional(string, "HTTP_301")
+    redirect_host        = string
+    redirect_path        = optional(string, "/")
+    redirect_query       = optional(string, "")
+  }))
+  validation {
+    condition = alltrue([
+      for rule in var.extra_http_listener_rules :
+      contains(["HTTP", "HTTPS"], rule.redirect_protocol)
+    ])
+    error_message = "redirect_protocol must be HTTP or HTTPS."
+  }
+  validation {
+    condition = alltrue([
+      for rule in var.extra_http_listener_rules :
+      contains(["HTTP_301", "HTTP_302", "HTTP_303", "HTTP_307", "HTTP_308"], rule.redirect_status_code)
+    ])
+    error_message = "redirect_status_code must be HTTP_301, HTTP_302, HTTP_303, HTTP_307, or HTTP_308."
+  }
 }
 
 variable "sqs_queue_name" {

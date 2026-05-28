@@ -4,3 +4,6 @@ target
 CHANGELOG.md
 *.tfstate*
 *.tfstate.backup
+.idea/
+.vscode/
+*.log
