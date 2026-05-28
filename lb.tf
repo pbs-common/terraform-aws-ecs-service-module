@@ -219,6 +219,56 @@ resource "aws_lb_listener_rule" "https_application_rule" {
   }
 }
 
+## Extra HTTPS Redirect Rules
+resource "aws_lb_listener_rule" "extra_https_redirect" {
+  count        = local.extra_https_rules_count
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = local.next_https_priority + count.index
+
+  action {
+    type = "redirect"
+
+    redirect {
+      protocol    = var.extra_https_listener_rules[count.index].redirect_protocol
+      status_code = var.extra_https_listener_rules[count.index].redirect_status_code
+      host        = var.extra_https_listener_rules[count.index].redirect_host
+      path        = var.extra_https_listener_rules[count.index].redirect_path
+      query       = var.extra_https_listener_rules[count.index].redirect_query
+    }
+  }
+
+  condition {
+    host_header {
+      values = var.extra_https_listener_rules[count.index].host_headers
+    }
+  }
+}
+
+## Extra HTTP Redirect Rules
+resource "aws_lb_listener_rule" "extra_http_redirect" {
+  count        = local.extra_http_rules_count
+  listener_arn = aws_lb_listener.http[0].arn
+  priority     = local.next_http_priority + count.index
+
+  action {
+    type = "redirect"
+
+    redirect {
+      protocol    = var.extra_http_listener_rules[count.index].redirect_protocol
+      status_code = var.extra_http_listener_rules[count.index].redirect_status_code
+      host        = var.extra_http_listener_rules[count.index].redirect_host
+      path        = var.extra_http_listener_rules[count.index].redirect_path
+      query       = var.extra_http_listener_rules[count.index].redirect_query
+    }
+  }
+
+  condition {
+    host_header {
+      values = var.extra_http_listener_rules[count.index].host_headers
+    }
+  }
+}
+
 # EIP for NLB
 resource "aws_eip" "nlb" {
   for_each = toset(local.nlb_eips)
