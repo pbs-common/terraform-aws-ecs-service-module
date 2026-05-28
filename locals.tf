@@ -50,6 +50,10 @@ locals {
   create_cloudmap_service              = var.namespace_id != null
   cloudmap_service_id                  = local.create_cloudmap_service ? one(aws_service_discovery_service.service[*].id) : null
   platform_version                     = var.platform_version != null ? var.platform_version : var.launch_type == "FARGATE" ? "LATEST" : null
+  extra_https_rules_count              = local.create_https_listeners ? length(var.extra_https_listener_rules) : 0
+  extra_http_rules_count               = local.only_create_http_listener ? length(var.extra_http_listener_rules) : 0
+  next_https_priority                  = var.route_priority + local.https_application_rule_count
+  next_http_priority                   = var.route_priority + local.http_application_rule_count
 
   creator = "terraform"
 
