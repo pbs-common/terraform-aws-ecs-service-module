@@ -599,13 +599,13 @@ variable "health_check_grace_period_seconds" {
 }
 
 variable "alb_arn" {
-  description = "ARN of the ALB used for ALB-based scaling. Required when `scaling_approach` is `alb`."
+  description = "ARN of the ALB used for ALB-based scaling. Required when `scaling_approach` is `alb` and `create_lb` is false. When `create_lb` is true the module's own ALB is used automatically."
   default     = null
   type        = string
 }
 
 variable "alb_target_group_arn" {
-  description = "ARN of the ALB target group used for ALB-based scaling. Required when `scaling_approach` is `alb`."
+  description = "ARN of the ALB target group used for ALB-based scaling. Required when `scaling_approach` is `alb` and `create_lb` is false. When `create_lb` is true the module's own target group is used automatically."
   default     = null
   type        = string
 }

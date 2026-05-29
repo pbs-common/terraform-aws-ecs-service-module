@@ -1,3 +1,9 @@
+locals {
+  # ALB scaling: prefer explicit vars; fall back to the module's own LB/TG when create_lb = true
+  alb_scaling_arn    = var.alb_arn != null ? var.alb_arn : try(aws_lb.lb[0].arn, "")
+  alb_scaling_tg_arn = var.alb_target_group_arn != null ? var.alb_target_group_arn : try(aws_lb_target_group.target_group[0].arn, "")
+}
+
 resource "aws_appautoscaling_target" "autoscaling_target" {
   count              = var.scaling_approach != "none" ? 1 : 0
   resource_id        = "service/${local.cluster}/${aws_ecs_service.service.name}"
@@ -444,8 +450,8 @@ resource "aws_cloudwatch_metric_alarm" "alb_high" {
   datapoints_to_alarm = 1
 
   dimensions = {
-    TargetGroup  = replace(var.alb_target_group_arn, "/arn:.*?:targetgroup\\/(.*)/", "targetgroup/$1")
-    LoadBalancer = replace(var.alb_arn, "/arn:.*?:loadbalancer\\/(.*)/", "$1")
+    TargetGroup  = replace(local.alb_scaling_tg_arn, "/arn:.*?:targetgroup\\/(.*)/", "targetgroup/$1")
+    LoadBalancer = replace(local.alb_scaling_arn, "/arn:.*?:loadbalancer\\/(.*)/", "$1")
   }
 
   actions_enabled = true
@@ -471,8 +477,8 @@ resource "aws_cloudwatch_metric_alarm" "alb_low" {
   datapoints_to_alarm = 1
 
   dimensions = {
-    TargetGroup  = replace(var.alb_target_group_arn, "/arn:.*?:targetgroup\\/(.*)/", "targetgroup/$1")
-    LoadBalancer = replace(var.alb_arn, "/arn:.*?:loadbalancer\\/(.*)/", "$1")
+    TargetGroup  = replace(local.alb_scaling_tg_arn, "/arn:.*?:targetgroup\\/(.*)/", "targetgroup/$1")
+    LoadBalancer = replace(local.alb_scaling_arn, "/arn:.*?:loadbalancer\\/(.*)/", "$1")
   }
 
   actions_enabled = true
