@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=9.0.2
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=9.0.2"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=9.0.2"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -73,7 +73,7 @@ module "service" {
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`9.0.2`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -96,7 +96,7 @@ Below is automatically generated documentation on this Terraform module using [t
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.46.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.45.0 |
 
 ## Modules
 
@@ -218,6 +218,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_extra_https_listener_rules"></a> [extra\_https\_listener\_rules](#input\_extra\_https\_listener\_rules) | (optional) Additional HTTPS listener rules to create for ALB host-header redirects. Each rule specifies host headers to match and redirect configuration. Priority is automatically assigned after application rules. | <pre>list(object({<br/>    host_headers         = list(string)<br/>    redirect_protocol    = optional(string, "HTTPS")<br/>    redirect_status_code = optional(string, "HTTP_301")<br/>    redirect_host        = string<br/>    redirect_path        = optional(string, "/")<br/>    redirect_query       = optional(string, "")<br/>  }))</pre> | `[]` | no |
 | <a name="input_extra_role_policy_json"></a> [extra\_role\_policy\_json](#input\_extra\_role\_policy\_json) | (optional) Extra IAM policy to attach to role used for this task without replacing defaults | `string` | `null` | no |
 | <a name="input_extra_task_execution_role_policy_json"></a> [extra\_task\_execution\_role\_policy\_json](#input\_extra\_task\_execution\_role\_policy\_json) | (optional) Extra IAM policy to attach to task execution role used for this task without replacing defaults | `string` | `null` | no |
+| <a name="input_force_new_deployment"></a> [force\_new\_deployment](#input\_force\_new\_deployment) | Enable force a new task deployment of the service. Set to true when changing launch\_type or capacity\_provider\_strategy. | `bool` | `false` | no |
 | <a name="input_healthcheck_healthy_threshold"></a> [healthcheck\_healthy\_threshold](#input\_healthcheck\_healthy\_threshold) | The number of consecutive health checks successes required before considering an unhealthy target healthy | `number` | `3` | no |
 | <a name="input_healthcheck_interval"></a> [healthcheck\_interval](#input\_healthcheck\_interval) | The approximate amount of time, in seconds, between health checks of an individual target | `number` | `10` | no |
 | <a name="input_healthcheck_matcher"></a> [healthcheck\_matcher](#input\_healthcheck\_matcher) | The HTTP codes to use when checking for a successful response from a target | `number` | `200` | no |
@@ -281,7 +282,11 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_scaling_evaluation_periods"></a> [scaling\_evaluation\_periods](#input\_scaling\_evaluation\_periods) | Number of periods over which data is compared to the threshold | `number` | `1` | no |
 | <a name="input_secrets"></a> [secrets](#input\_secrets) | (optional) secrets to be passed to the container. By default none is passed | <pre>set(object({<br/>    name      = string<br/>    valueFrom = string<br/>  }))</pre> | `[]` | no |
 | <a name="input_service_sg_name"></a> [service\_sg\_name](#input\_service\_sg\_name) | Prefix for the name of the service security group. If null, will use `${local.name}-service-sg-`. | `string` | `null` | no |
+| <a name="input_sqs_alarm_high_name"></a> [sqs\_alarm\_high\_name](#input\_sqs\_alarm\_high\_name) | Override name for the SQS high-watermark CloudWatch alarm. Defaults to `${local.name}-sqs-high`. | `string` | `null` | no |
+| <a name="input_sqs_alarm_low_name"></a> [sqs\_alarm\_low\_name](#input\_sqs\_alarm\_low\_name) | Override name for the SQS low-watermark CloudWatch alarm. Defaults to `${local.name}-sqs-low`. | `string` | `null` | no |
 | <a name="input_sqs_queue_name"></a> [sqs\_queue\_name](#input\_sqs\_queue\_name) | Name of the SQS queue to use for SQS-based scaling. Required when scaling\_approach is `sqs` | `string` | `""` | no |
+| <a name="input_sqs_scale_down_policy_name"></a> [sqs\_scale\_down\_policy\_name](#input\_sqs\_scale\_down\_policy\_name) | Override name for the SQS scale-down autoscaling policy. Defaults to `${local.name}-sqs-scale-down-policy`. | `string` | `null` | no |
+| <a name="input_sqs_scale_up_policy_name"></a> [sqs\_scale\_up\_policy\_name](#input\_sqs\_scale\_up\_policy\_name) | Override name for the SQS scale-up autoscaling policy. Defaults to `${local.name}-sqs-scale-up-policy`. | `string` | `null` | no |
 | <a name="input_sqs_visible_down_threshold"></a> [sqs\_visible\_down\_threshold](#input\_sqs\_visible\_down\_threshold) | Number of visible SQS messages below which a scale-down event is triggered | `number` | `10` | no |
 | <a name="input_sqs_visible_up_threshold"></a> [sqs\_visible\_up\_threshold](#input\_sqs\_visible\_up\_threshold) | Number of visible SQS messages that triggers a scale-up event | `number` | `100` | no |
 | <a name="input_ssm_path"></a> [ssm\_path](#input\_ssm\_path) | (optional) path to the ssm parameters you want pulled into your container during execution of the entrypoint | `string` | `null` | no |
