@@ -33,8 +33,8 @@ module "ecs_service" {
   # Optional: HTTP redirect rules
   extra_http_listener_rules = [
     {
-      host_headers  = ["old-app.${var.hosted_zone}"]
-      redirect_host = "${var.product}.${var.hosted_zone}"
+      host_headers      = ["old-app.${var.hosted_zone}"]
+      redirect_host     = "${var.product}.${var.hosted_zone}"
       redirect_protocol = "HTTPS"
     }
   ]
