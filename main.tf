@@ -19,6 +19,17 @@ resource "aws_ecs_service" "service" {
     }
   }
 
+  dynamic "load_balancer" {
+    for_each = var.custom_target_group_arns
+    content {
+      target_group_arn = load_balancer.value
+      container_name   = local.container_name
+      container_port   = var.container_port
+    }
+  }
+
+  health_check_grace_period_seconds = var.health_check_grace_period_seconds
+
   dynamic "service_registries" {
     for_each = toset(local.create_cloudmap_service ? [local.create_cloudmap_service] : [])
     content {

@@ -585,3 +585,15 @@ variable "sqs_visible_down_threshold" {
   default     = 10
   type        = number
 }
+
+variable "custom_target_group_arns" {
+  description = "List of existing ALB target group ARNs to attach to the service instead of creating a new load balancer."
+  default     = []
+  type        = list(string)
+}
+
+variable "health_check_grace_period_seconds" {
+  description = "Seconds to ignore failing load balancer health checks on newly instantiated tasks."
+  default     = null
+  type        = number
+}
