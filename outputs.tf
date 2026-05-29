@@ -54,8 +54,13 @@ output "image_tag" {
 }
 
 output "https_listener_arn" {
-  description = "ARN of the HTTPS listener. Useful when adding extra ACM certificates to the listener."
+  description = "ARN of the HTTPS listener. Useful when adding extra ACM certificates or listener rules to the listener."
   value       = local.create_https_listeners ? one(aws_lb_listener.https[*].arn) : null
+}
+
+output "http_listener_arn" {
+  description = "ARN of the HTTP listener. Useful when adding extra listener rules to the listener."
+  value       = local.only_create_http_listener ? one(aws_lb_listener.http[*].arn) : local.create_https_listeners && var.http_redirect ? one(aws_lb_listener.http_redirect[*].arn) : null
 }
 
 output "lb_sg" {
@@ -81,4 +86,13 @@ output "lb_zone_id" {
 output "iam_task_role_arn" {
   description = "IAM role ARN associated with a task defition, if task defition is created by the ecs service module"
   value       = var.task_def_arn == null ? module.task[0].role_arn : "N/A"
+}
+output "extra_https_listener_rule_arns" {
+  description = "ARNs of the extra HTTPS listener rules created"
+  value       = aws_lb_listener_rule.extra_https_redirect[*].arn
+}
+
+output "extra_http_listener_rule_arns" {
+  description = "ARNs of the extra HTTP listener rules created"
+  value       = aws_lb_listener_rule.extra_http_redirect[*].arn
 }
