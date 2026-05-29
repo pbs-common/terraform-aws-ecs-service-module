@@ -69,8 +69,8 @@ variable "scaling_approach" {
   default     = "target_tracking"
   type        = string
   validation {
-    condition     = contains(["target_tracking", "step_scaling", "sqs", "alb", "none"], var.scaling_approach)
-    error_message = "Scaling approach must be `target_tracking`, `step_scaling`, `sqs`, `alb` or `none`."
+    condition     = contains(["target_tracking", "step_scaling", "sqs", "request_count", "none"], var.scaling_approach)
+    error_message = "Scaling approach must be `target_tracking`, `step_scaling`, `sqs`, `request_count` or `none`."
   }
 }
 
@@ -623,25 +623,25 @@ variable "alb_scale_down_threshold" {
 }
 
 variable "alb_alarm_high_name" {
-  description = "Override name for the ALB scale-up CloudWatch alarm. Defaults to `${local.name}-alb-requests-high`."
+  description = "Override name for the ALB scale-up CloudWatch alarm. Defaults to `${local.name}-request-count-high`."
   default     = null
   type        = string
 }
 
 variable "alb_alarm_low_name" {
-  description = "Override name for the ALB scale-down CloudWatch alarm. Defaults to `${local.name}-alb-requests-low`."
+  description = "Override name for the ALB scale-down CloudWatch alarm. Defaults to `${local.name}-request-count-low`."
   default     = null
   type        = string
 }
 
 variable "alb_scale_up_policy_name" {
-  description = "Override name for the ALB scale-up autoscaling policy. Defaults to `${local.name}-alb-scale-up-policy`."
+  description = "Override name for the ALB scale-up autoscaling policy. Defaults to `${local.name}-request-count-scale-up-policy`."
   default     = null
   type        = string
 }
 
 variable "alb_scale_down_policy_name" {
-  description = "Override name for the ALB scale-down autoscaling policy. Defaults to `${local.name}-alb-scale-down-policy`."
+  description = "Override name for the ALB scale-down autoscaling policy. Defaults to `${local.name}-request-count-scale-down-policy`."
   default     = null
   type        = string
 }

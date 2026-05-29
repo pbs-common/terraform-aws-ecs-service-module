@@ -396,11 +396,11 @@ resource "aws_cloudwatch_metric_alarm" "sqs_low" {
   )
 }
 
-# ── ALB RequestCountPerTarget–based scaling (scaling_approach = "alb") ────────
+# ── ALB RequestCountPerTarget–based scaling (scaling_approach = "request_count") ────────
 
-resource "aws_appautoscaling_policy" "alb_scale_up_policy" {
-  count              = var.scaling_approach == "alb" ? 1 : 0
-  name               = var.alb_scale_up_policy_name != null ? var.alb_scale_up_policy_name : "${local.name}-alb-scale-up-policy"
+resource "aws_appautoscaling_policy" "request_count_scale_up_policy" {
+  count              = var.scaling_approach == "request_count" ? 1 : 0
+  name               = var.alb_scale_up_policy_name != null ? var.alb_scale_up_policy_name : "${local.name}-request-count-scale-up-policy"
   resource_id        = "service/${local.cluster}/${aws_ecs_service.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
@@ -417,9 +417,9 @@ resource "aws_appautoscaling_policy" "alb_scale_up_policy" {
   }
 }
 
-resource "aws_appautoscaling_policy" "alb_scale_down_policy" {
-  count              = var.scaling_approach == "alb" ? 1 : 0
-  name               = var.alb_scale_down_policy_name != null ? var.alb_scale_down_policy_name : "${local.name}-alb-scale-down-policy"
+resource "aws_appautoscaling_policy" "request_count_scale_down_policy" {
+  count              = var.scaling_approach == "request_count" ? 1 : 0
+  name               = var.alb_scale_down_policy_name != null ? var.alb_scale_down_policy_name : "${local.name}-request-count-scale-down-policy"
   resource_id        = "service/${local.cluster}/${aws_ecs_service.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
@@ -436,9 +436,9 @@ resource "aws_appautoscaling_policy" "alb_scale_down_policy" {
   }
 }
 
-resource "aws_cloudwatch_metric_alarm" "alb_high" {
-  count               = var.scaling_approach == "alb" ? 1 : 0
-  alarm_name          = var.alb_alarm_high_name != null ? var.alb_alarm_high_name : "${local.name}-alb-requests-high"
+resource "aws_cloudwatch_metric_alarm" "request_count_high" {
+  count               = var.scaling_approach == "request_count" ? 1 : 0
+  alarm_name          = var.alb_alarm_high_name != null ? var.alb_alarm_high_name : "${local.name}-request-count-high"
   alarm_description   = "Scale up ${local.name} based on ALB RequestCountPerTarget"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = var.scaling_evaluation_periods
@@ -455,7 +455,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_high" {
   }
 
   actions_enabled = true
-  alarm_actions   = [aws_appautoscaling_policy.alb_scale_up_policy[0].arn]
+  alarm_actions   = [aws_appautoscaling_policy.request_count_scale_up_policy[0].arn]
 
   tags = merge(
     local.tags,
@@ -463,9 +463,9 @@ resource "aws_cloudwatch_metric_alarm" "alb_high" {
   )
 }
 
-resource "aws_cloudwatch_metric_alarm" "alb_low" {
-  count               = var.scaling_approach == "alb" ? 1 : 0
-  alarm_name          = var.alb_alarm_low_name != null ? var.alb_alarm_low_name : "${local.name}-alb-requests-low"
+resource "aws_cloudwatch_metric_alarm" "request_count_low" {
+  count               = var.scaling_approach == "request_count" ? 1 : 0
+  alarm_name          = var.alb_alarm_low_name != null ? var.alb_alarm_low_name : "${local.name}-request-count-low"
   alarm_description   = "Scale down ${local.name} based on ALB RequestCountPerTarget"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = var.scaling_evaluation_periods
@@ -482,7 +482,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_low" {
   }
 
   actions_enabled = true
-  alarm_actions   = [aws_appautoscaling_policy.alb_scale_down_policy[0].arn]
+  alarm_actions   = [aws_appautoscaling_policy.request_count_scale_down_policy[0].arn]
 
   tags = merge(
     local.tags,
