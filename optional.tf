@@ -623,25 +623,25 @@ variable "alb_scale_down_threshold" {
 }
 
 variable "alb_alarm_high_name" {
-  description = "Override name for the ALB scale-up CloudWatch alarm. Defaults to `${local.name}-request-count-high`."
+  description = "Override name for the ALB scale-up CloudWatch alarm. Defaults to `$${local.name}-request-count-high`."
   default     = null
   type        = string
 }
 
 variable "alb_alarm_low_name" {
-  description = "Override name for the ALB scale-down CloudWatch alarm. Defaults to `${local.name}-request-count-low`."
+  description = "Override name for the ALB scale-down CloudWatch alarm. Defaults to `$${local.name}-request-count-low`."
   default     = null
   type        = string
 }
 
 variable "alb_scale_up_policy_name" {
-  description = "Override name for the ALB scale-up autoscaling policy. Defaults to `${local.name}-request-count-scale-up-policy`."
+  description = "Override name for the ALB scale-up autoscaling policy. Defaults to `$${local.name}-request-count-scale-up-policy`."
   default     = null
   type        = string
 }
 
 variable "alb_scale_down_policy_name" {
-  description = "Override name for the ALB scale-down autoscaling policy. Defaults to `${local.name}-request-count-scale-down-policy`."
+  description = "Override name for the ALB scale-down autoscaling policy. Defaults to `$${local.name}-request-count-scale-down-policy`."
   default     = null
   type        = string
 }
