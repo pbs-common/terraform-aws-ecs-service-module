@@ -194,6 +194,12 @@ variable "propagate_tags" {
   type        = string
 }
 
+variable "force_new_deployment" {
+  description = "Enable force a new task deployment of the service. Set to true when changing launch_type or capacity_provider_strategy."
+  default     = false
+  type        = bool
+}
+
 variable "platform_version" {
   description = "The platform version on which to run your service"
   default     = "LATEST"
@@ -487,6 +493,30 @@ variable "custom_http_headers" {
 variable "sqs_queue_name" {
   description = "Name of the SQS queue to use for SQS-based scaling. Required when scaling_approach is `sqs`"
   default     = ""
+  type        = string
+}
+
+variable "sqs_alarm_high_name" {
+  description = "Override name for the SQS high-watermark CloudWatch alarm. Defaults to `$${local.name}-sqs-high`."
+  default     = null
+  type        = string
+}
+
+variable "sqs_alarm_low_name" {
+  description = "Override name for the SQS low-watermark CloudWatch alarm. Defaults to `$${local.name}-sqs-low`."
+  default     = null
+  type        = string
+}
+
+variable "sqs_scale_up_policy_name" {
+  description = "Override name for the SQS scale-up autoscaling policy. Defaults to `$${local.name}-sqs-scale-up-policy`."
+  default     = null
+  type        = string
+}
+
+variable "sqs_scale_down_policy_name" {
+  description = "Override name for the SQS scale-down autoscaling policy. Defaults to `$${local.name}-sqs-scale-down-policy`."
+  default     = null
   type        = string
 }
 
