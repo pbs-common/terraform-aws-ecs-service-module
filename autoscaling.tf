@@ -287,7 +287,7 @@ resource "aws_appautoscaling_policy" "requests_count_scale_down_policy" {
 
 resource "aws_appautoscaling_policy" "sqs_scale_up_policy" {
   count              = var.scaling_approach == "sqs" ? 1 : 0
-  name               = "${local.name}-sqs-scale-up-policy"
+  name               = var.sqs_scale_up_policy_name != null ? var.sqs_scale_up_policy_name : "${local.name}-sqs-scale-up-policy"
   resource_id        = "service/${local.cluster}/${aws_ecs_service.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
@@ -306,7 +306,7 @@ resource "aws_appautoscaling_policy" "sqs_scale_up_policy" {
 
 resource "aws_appautoscaling_policy" "sqs_scale_down_policy" {
   count              = var.scaling_approach == "sqs" ? 1 : 0
-  name               = "${local.name}-sqs-scale-down-policy"
+  name               = var.sqs_scale_down_policy_name != null ? var.sqs_scale_down_policy_name : "${local.name}-sqs-scale-down-policy"
   resource_id        = "service/${local.cluster}/${aws_ecs_service.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
@@ -325,7 +325,7 @@ resource "aws_appautoscaling_policy" "sqs_scale_down_policy" {
 
 resource "aws_cloudwatch_metric_alarm" "sqs_high" {
   count               = var.scaling_approach == "sqs" ? 1 : 0
-  alarm_name          = "${local.name}-sqs-high"
+  alarm_name          = var.sqs_alarm_high_name != null ? var.sqs_alarm_high_name : "${local.name}-sqs-high"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   threshold           = var.sqs_visible_up_threshold
@@ -358,7 +358,7 @@ resource "aws_cloudwatch_metric_alarm" "sqs_high" {
 
 resource "aws_cloudwatch_metric_alarm" "sqs_low" {
   count               = var.scaling_approach == "sqs" ? 1 : 0
-  alarm_name          = "${local.name}-sqs-low"
+  alarm_name          = var.sqs_alarm_low_name != null ? var.sqs_alarm_low_name : "${local.name}-sqs-low"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 1
   threshold           = var.sqs_visible_down_threshold

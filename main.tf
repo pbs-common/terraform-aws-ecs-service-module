@@ -38,7 +38,8 @@ resource "aws_ecs_service" "service" {
     rollback = var.enable_circuit_breaker_rollback
   }
 
-  propagate_tags = var.propagate_tags
+  propagate_tags       = var.propagate_tags
+  force_new_deployment = var.force_new_deployment
 
   lifecycle {
     ignore_changes = [
