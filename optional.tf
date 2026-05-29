@@ -65,12 +65,12 @@ variable "scaling_evaluation_periods" {
 }
 
 variable "scaling_approach" {
-  description = "Approach to take with scaling. Valid values are `target_tracking`, `step_scaling` and `sqs`"
+  description = "Approach to take with scaling. Valid values are `target_tracking`, `step_scaling`, `sqs` and `none`"
   default     = "target_tracking"
   type        = string
   validation {
-    condition     = contains(["target_tracking", "step_scaling", "sqs"], var.scaling_approach)
-    error_message = "Scaling approach must be `target_tracking`, `step_scaling` or `sqs`."
+    condition     = contains(["target_tracking", "step_scaling", "sqs", "none"], var.scaling_approach)
+    error_message = "Scaling approach must be `target_tracking`, `step_scaling`, `sqs` or `none`."
   }
 }
 
