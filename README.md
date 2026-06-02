@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=10.0.0
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=10.0.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=10.0.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -73,7 +73,7 @@ module "service" {
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`10.0.0`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -111,6 +111,8 @@ Below is automatically generated documentation on this Terraform module using [t
 |------|------|
 | [aws_appautoscaling_policy.cpu_autoscaling_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.memory_autoscaling_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
+| [aws_appautoscaling_policy.request_count_scale_down_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
+| [aws_appautoscaling_policy.request_count_scale_up_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.requests_count_autoscaling_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.requests_count_scale_down_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.requests_count_scale_up_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
@@ -123,6 +125,8 @@ Below is automatically generated documentation on this Terraform module using [t
 | [aws_cloudwatch_metric_alarm.cpu_low](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.memory_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.memory_low](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
+| [aws_cloudwatch_metric_alarm.request_count_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
+| [aws_cloudwatch_metric_alarm.request_count_low](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.requests_count_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.requests_count_low](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.sqs_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
@@ -175,7 +179,15 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_product"></a> [product](#input\_product) | Tag used to group resources according to product | `string` | n/a | yes |
 | <a name="input_repo"></a> [repo](#input\_repo) | Tag used to point to the repo using this module | `string` | n/a | yes |
 | <a name="input_acm_arn"></a> [acm\_arn](#input\_acm\_arn) | ARN of the ACM certificate to use for the service. If null, one will be guessed based on the primary hosted zone of the service. | `string` | `null` | no |
+| <a name="input_alb_alarm_high_name"></a> [alb\_alarm\_high\_name](#input\_alb\_alarm\_high\_name) | Override name for the ALB scale-up CloudWatch alarm. Defaults to `${local.name}-request-count-high`. | `string` | `null` | no |
+| <a name="input_alb_alarm_low_name"></a> [alb\_alarm\_low\_name](#input\_alb\_alarm\_low\_name) | Override name for the ALB scale-down CloudWatch alarm. Defaults to `${local.name}-request-count-low`. | `string` | `null` | no |
+| <a name="input_alb_arn"></a> [alb\_arn](#input\_alb\_arn) | ARN of the ALB used for ALB-based scaling. Required when `scaling_approach` is `request_count` and `create_lb` is false. When `create_lb` is true the module's own ALB is used automatically. | `string` | `null` | no |
+| <a name="input_alb_scale_down_policy_name"></a> [alb\_scale\_down\_policy\_name](#input\_alb\_scale\_down\_policy\_name) | Override name for the ALB scale-down autoscaling policy. Defaults to `${local.name}-request-count-scale-down-policy`. | `string` | `null` | no |
+| <a name="input_alb_scale_down_threshold"></a> [alb\_scale\_down\_threshold](#input\_alb\_scale\_down\_threshold) | RequestCountPerTarget value below which a scale-down event is triggered when `scaling_approach` is `request_count`. | `number` | `70` | no |
+| <a name="input_alb_scale_up_policy_name"></a> [alb\_scale\_up\_policy\_name](#input\_alb\_scale\_up\_policy\_name) | Override name for the ALB scale-up autoscaling policy. Defaults to `${local.name}-request-count-scale-up-policy`. | `string` | `null` | no |
+| <a name="input_alb_scale_up_threshold"></a> [alb\_scale\_up\_threshold](#input\_alb\_scale\_up\_threshold) | RequestCountPerTarget value that triggers a scale-up event when `scaling_approach` is `request_count`. | `number` | `140` | no |
 | <a name="input_alb_ssl_policy"></a> [alb\_ssl\_policy](#input\_alb\_ssl\_policy) | SSL policy to use for an Application Load Balancer application. | `string` | `"ELBSecurityPolicy-TLS13-1-2-2021-06"` | no |
+| <a name="input_alb_target_group_arn"></a> [alb\_target\_group\_arn](#input\_alb\_target\_group\_arn) | ARN of the ALB target group used for ALB-based scaling. Required when `scaling_approach` is `request_count` and `create_lb` is false. When `create_lb` is true the module's own target group is used automatically. | `string` | `null` | no |
 | <a name="input_aliases"></a> [aliases](#input\_aliases) | CNAME(s) that are allowed to be used for this service. Default is `product`.`hosted_zone`. e.g. [product.example.com] --> [product.example.com] | `list(string)` | `null` | no |
 | <a name="input_alpn_policy"></a> [alpn\_policy](#input\_alpn\_policy) | Name of the Application-Layer Protocol Negotiation (ALPN) policy. Can be set if protocol is TLS. Valid values are HTTP1Only, HTTP2Only, HTTP2Optional, HTTP2Preferred, and None. | `string` | `"HTTP2Preferred"` | no |
 | <a name="input_awslogs_driver_mode"></a> [awslogs\_driver\_mode](#input\_awslogs\_driver\_mode) | (optional) awslogs driver mode. Set this to `blocking` if you would rather have an outage than lose logs. | `string` | `"non-blocking"` | no |
@@ -202,6 +214,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_create_attach_eip_to_nlb"></a> [create\_attach\_eip\_to\_nlb](#input\_create\_attach\_eip\_to\_nlb) | Create EIPs for each subnet and attach them to the NLB (public only) | `bool` | `false` | no |
 | <a name="input_create_lb"></a> [create\_lb](#input\_create\_lb) | Create load balancer for service. If creating a virtual node, will ignore value. | `bool` | `true` | no |
 | <a name="input_custom_http_headers"></a> [custom\_http\_headers](#input\_custom\_http\_headers) | (optional) Custom HTTP headers for application load balancers. Format should be a list of maps with `name` and `value` keys. e.g. [{ name = "header1", value = "value1"}, { name = "header2", value = "value2"}] | `list(object({ name = string, value = string }))` | `[]` | no |
+| <a name="input_custom_target_group_arns"></a> [custom\_target\_group\_arns](#input\_custom\_target\_group\_arns) | List of existing ALB target group ARNs to attach to the service instead of creating a new load balancer. | `list(string)` | `[]` | no |
 | <a name="input_deployment_maximum_percent"></a> [deployment\_maximum\_percent](#input\_deployment\_maximum\_percent) | The upper limit (as a percentage of the service's desiredCount) of the number of running tasks that can be running in a service during a deployment | `number` | `150` | no |
 | <a name="input_deployment_minimum_healthy_percent"></a> [deployment\_minimum\_healthy\_percent](#input\_deployment\_minimum\_healthy\_percent) | The lower limit (as a percentage of the service's desiredCount) of the number of running tasks that must remain running and healthy in a service during a deployment | `number` | `100` | no |
 | <a name="input_dns_evaluate_target_health"></a> [dns\_evaluate\_target\_health](#input\_dns\_evaluate\_target\_health) | evaluate health of endpoints by querying DNS records | `bool` | `false` | no |
@@ -219,6 +232,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_extra_role_policy_json"></a> [extra\_role\_policy\_json](#input\_extra\_role\_policy\_json) | (optional) Extra IAM policy to attach to role used for this task without replacing defaults | `string` | `null` | no |
 | <a name="input_extra_task_execution_role_policy_json"></a> [extra\_task\_execution\_role\_policy\_json](#input\_extra\_task\_execution\_role\_policy\_json) | (optional) Extra IAM policy to attach to task execution role used for this task without replacing defaults | `string` | `null` | no |
 | <a name="input_force_new_deployment"></a> [force\_new\_deployment](#input\_force\_new\_deployment) | Enable force a new task deployment of the service. Set to true when changing launch\_type or capacity\_provider\_strategy. | `bool` | `false` | no |
+| <a name="input_health_check_grace_period_seconds"></a> [health\_check\_grace\_period\_seconds](#input\_health\_check\_grace\_period\_seconds) | Seconds to ignore failing load balancer health checks on newly instantiated tasks. | `number` | `null` | no |
 | <a name="input_healthcheck_healthy_threshold"></a> [healthcheck\_healthy\_threshold](#input\_healthcheck\_healthy\_threshold) | The number of consecutive health checks successes required before considering an unhealthy target healthy | `number` | `3` | no |
 | <a name="input_healthcheck_interval"></a> [healthcheck\_interval](#input\_healthcheck\_interval) | The approximate amount of time, in seconds, between health checks of an individual target | `number` | `10` | no |
 | <a name="input_healthcheck_matcher"></a> [healthcheck\_matcher](#input\_healthcheck\_matcher) | The HTTP codes to use when checking for a successful response from a target | `number` | `200` | no |
@@ -277,7 +291,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_scale_up_cpu_threshold"></a> [scale\_up\_cpu\_threshold](#input\_scale\_up\_cpu\_threshold) | Threshold at which CPU utilization triggers a scale up event | `number` | `80` | no |
 | <a name="input_scale_up_memory_threshold"></a> [scale\_up\_memory\_threshold](#input\_scale\_up\_memory\_threshold) | Threshold at which Memory utilization triggers a scale up event | `number` | `80` | no |
 | <a name="input_scale_up_requests_count_per_target"></a> [scale\_up\_requests\_count\_per\_target](#input\_scale\_up\_requests\_count\_per\_target) | Threshold at which Request count per target triggers a scale up event | `number` | `140` | no |
-| <a name="input_scaling_approach"></a> [scaling\_approach](#input\_scaling\_approach) | Approach to take with scaling. Valid values are `target_tracking`, `step_scaling`, `sqs` and `none` | `string` | `"target_tracking"` | no |
+| <a name="input_scaling_approach"></a> [scaling\_approach](#input\_scaling\_approach) | Approach to take with scaling. Valid values are `target_tracking`, `step_scaling`, `sqs`, `request_count` and `none` | `string` | `"target_tracking"` | no |
 | <a name="input_scaling_evaluation_period"></a> [scaling\_evaluation\_period](#input\_scaling\_evaluation\_period) | Scaling evaluation period in seconds | `number` | `60` | no |
 | <a name="input_scaling_evaluation_periods"></a> [scaling\_evaluation\_periods](#input\_scaling\_evaluation\_periods) | Number of periods over which data is compared to the threshold | `number` | `1` | no |
 | <a name="input_secrets"></a> [secrets](#input\_secrets) | (optional) secrets to be passed to the container. By default none is passed | <pre>set(object({<br/>    name      = string<br/>    valueFrom = string<br/>  }))</pre> | `[]` | no |
