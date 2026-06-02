@@ -389,3 +389,97 @@ resource "aws_cloudwatch_metric_alarm" "sqs_low" {
     { Name = "${local.name} CW Metric Alarm SQS Low" },
   )
 }
+
+# ── ALB RequestCountPerTarget–based scaling (scaling_approach = "request_count") ────────
+
+resource "aws_appautoscaling_policy" "request_count_scale_up_policy" {
+  count              = var.scaling_approach == "request_count" ? 1 : 0
+  name               = var.alb_scale_up_policy_name != null ? var.alb_scale_up_policy_name : "${local.name}-request-count-scale-up-policy"
+  resource_id        = "service/${local.cluster}/${aws_ecs_service.service.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = var.scale_up_cooldown
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      metric_interval_lower_bound = 0
+      scaling_adjustment          = var.scale_up_adjustment
+    }
+  }
+}
+
+resource "aws_appautoscaling_policy" "request_count_scale_down_policy" {
+  count              = var.scaling_approach == "request_count" ? 1 : 0
+  name               = var.alb_scale_down_policy_name != null ? var.alb_scale_down_policy_name : "${local.name}-request-count-scale-down-policy"
+  resource_id        = "service/${local.cluster}/${aws_ecs_service.service.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = var.scale_down_cooldown
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      metric_interval_upper_bound = 0
+      scaling_adjustment          = var.scale_down_adjustment
+    }
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "request_count_high" {
+  count               = var.scaling_approach == "request_count" ? 1 : 0
+  alarm_name          = var.alb_alarm_high_name != null ? var.alb_alarm_high_name : "${local.name}-request-count-high"
+  alarm_description   = "Scale up ${local.name} based on ALB RequestCountPerTarget"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = var.scaling_evaluation_periods
+  metric_name         = "RequestCountPerTarget"
+  namespace           = "AWS/ApplicationELB"
+  period              = var.scaling_evaluation_period
+  statistic           = "Sum"
+  threshold           = var.alb_scale_up_threshold
+  datapoints_to_alarm = 1
+
+  dimensions = {
+    TargetGroup  = replace(local.alb_scaling_tg_arn, "/arn:.*?:targetgroup\\/(.*)/", "targetgroup/$1")
+    LoadBalancer = replace(local.alb_scaling_arn, "/arn:.*?:loadbalancer\\/(.*)/", "$1")
+  }
+
+  actions_enabled = true
+  alarm_actions   = [aws_appautoscaling_policy.request_count_scale_up_policy[0].arn]
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name} CW Metric Alarm ALB Requests High" },
+  )
+}
+
+resource "aws_cloudwatch_metric_alarm" "request_count_low" {
+  count               = var.scaling_approach == "request_count" ? 1 : 0
+  alarm_name          = var.alb_alarm_low_name != null ? var.alb_alarm_low_name : "${local.name}-request-count-low"
+  alarm_description   = "Scale down ${local.name} based on ALB RequestCountPerTarget"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = var.scaling_evaluation_periods
+  metric_name         = "RequestCountPerTarget"
+  namespace           = "AWS/ApplicationELB"
+  period              = var.scaling_evaluation_period
+  statistic           = "Sum"
+  threshold           = var.alb_scale_down_threshold
+  datapoints_to_alarm = 1
+
+  dimensions = {
+    TargetGroup  = replace(local.alb_scaling_tg_arn, "/arn:.*?:targetgroup\\/(.*)/", "targetgroup/$1")
+    LoadBalancer = replace(local.alb_scaling_arn, "/arn:.*?:loadbalancer\\/(.*)/", "$1")
+  }
+
+  actions_enabled = true
+  alarm_actions   = [aws_appautoscaling_policy.request_count_scale_down_policy[0].arn]
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name} CW Metric Alarm ALB Requests Low" },
+  )
+}
