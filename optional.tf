@@ -65,7 +65,7 @@ variable "scaling_evaluation_periods" {
 }
 
 variable "scaling_approach" {
-  description = "Approach to take with scaling. Valid values are `target_tracking`, `step_scaling`, `sqs`, `alb` and `none`"
+  description = "Approach to take with scaling. Valid values are `target_tracking`, `step_scaling`, `sqs`, `request_count` and `none`"
   default     = "target_tracking"
   type        = string
   validation {
@@ -599,25 +599,25 @@ variable "health_check_grace_period_seconds" {
 }
 
 variable "alb_arn" {
-  description = "ARN of the ALB used for ALB-based scaling. Required when `scaling_approach` is `alb` and `create_lb` is false. When `create_lb` is true the module's own ALB is used automatically."
+  description = "ARN of the ALB used for ALB-based scaling. Required when `scaling_approach` is `request_count` and `create_lb` is false. When `create_lb` is true the module's own ALB is used automatically."
   default     = null
   type        = string
 }
 
 variable "alb_target_group_arn" {
-  description = "ARN of the ALB target group used for ALB-based scaling. Required when `scaling_approach` is `alb` and `create_lb` is false. When `create_lb` is true the module's own target group is used automatically."
+  description = "ARN of the ALB target group used for ALB-based scaling. Required when `scaling_approach` is `request_count` and `create_lb` is false. When `create_lb` is true the module's own target group is used automatically."
   default     = null
   type        = string
 }
 
 variable "alb_scale_up_threshold" {
-  description = "RequestCountPerTarget value that triggers a scale-up event when `scaling_approach` is `alb`."
+  description = "RequestCountPerTarget value that triggers a scale-up event when `scaling_approach` is `request_count`."
   default     = 140
   type        = number
 }
 
 variable "alb_scale_down_threshold" {
-  description = "RequestCountPerTarget value below which a scale-down event is triggered when `scaling_approach` is `alb`."
+  description = "RequestCountPerTarget value below which a scale-down event is triggered when `scaling_approach` is `request_count`."
   default     = 70
   type        = number
 }
