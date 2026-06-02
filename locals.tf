@@ -134,3 +134,9 @@ locals {
 }
 
 data "aws_default_tags" "common_tags" {}
+
+locals {
+  # ALB scaling: prefer explicit vars; fall back to the module's own LB/TG when create_lb = true
+  alb_scaling_arn    = var.alb_arn != null ? var.alb_arn : try(aws_lb.lb[0].arn, "")
+  alb_scaling_tg_arn = var.alb_target_group_arn != null ? var.alb_target_group_arn : try(aws_lb_target_group.target_group[0].arn, "")
+}
