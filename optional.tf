@@ -179,7 +179,7 @@ variable "healthcheck_interval" {
 variable "healthcheck_matcher" {
   description = "The HTTP codes to use when checking for a successful response from a target"
   default     = 200
-  type        = number
+  type        = string
 }
 
 variable "launch_type" {
