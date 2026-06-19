@@ -7,6 +7,7 @@ locals {
   service_sg_name                      = var.service_sg_name != null ? var.service_sg_name : "${local.name}-service-sg-"
   target_group_name                    = var.target_group_name != null ? var.target_group_name : local.name
   cluster                              = var.cluster != null ? var.cluster : one(module.cluster[*].name)
+  cluster_name                         = startswith(local.cluster, "arn:") ? regex("[^/]+$", local.cluster) : local.cluster
   task_def_arn                         = var.task_def_arn != null ? var.task_def_arn : one(module.task[*].arn)
   vpc_id                               = var.vpc_id != null ? var.vpc_id : one(data.aws_vpc.vpc[*].id)
   public_service                       = var.lb_scheme == "public"
