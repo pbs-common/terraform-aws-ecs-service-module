@@ -5,7 +5,7 @@ output "name" {
 
 output "arn" {
   description = "ARN of the service"
-  value       = aws_ecs_service.service.id
+  value       = local.service.id
 }
 
 output "service_id" {

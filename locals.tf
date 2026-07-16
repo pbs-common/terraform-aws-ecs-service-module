@@ -58,6 +58,9 @@ locals {
 
   creator = "terraform"
 
+  # Resolves to whichever service instance exists (see main.tf for why there are two)
+  service = one(concat(aws_ecs_service.service[*], aws_ecs_service.service_ignore_task_definition[*]))
+
   application_signals_envs = var.enable_application_signals == false ? [] : [
     {
       "name" : "OTEL_RESOURCE_ATTRIBUTES",

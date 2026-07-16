@@ -200,6 +200,12 @@ variable "force_new_deployment" {
   type        = bool
 }
 
+variable "ignore_task_definition_changes" {
+  description = "(optional) If true, changes to the service's task_definition are ignored after the initial creation. Useful when task definitions are deployed out-of-band (e.g. by a CI/CD pipeline) and Terraform should not revert them."
+  default     = false
+  type        = bool
+}
+
 variable "platform_version" {
   description = "The platform version on which to run your service"
   default     = "LATEST"

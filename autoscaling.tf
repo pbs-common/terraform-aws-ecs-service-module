@@ -1,6 +1,6 @@
 resource "aws_appautoscaling_target" "autoscaling_target" {
   count              = var.scaling_approach != "none" ? 1 : 0
-  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.service.name}"
+  resource_id        = "service/${local.cluster_name}/${local.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
   min_capacity       = var.min_capacity
@@ -62,7 +62,7 @@ resource "aws_appautoscaling_policy" "requests_count_autoscaling_policy" {
 resource "aws_appautoscaling_policy" "scale_up_policy" {
   count              = var.scaling_approach == "step_scaling" && var.requests_count_scaling == false ? 1 : 0
   name               = "${local.name}-scale-up-policy"
-  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.service.name}"
+  resource_id        = "service/${local.cluster_name}/${local.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
 
   service_namespace = "ecs"
@@ -82,7 +82,7 @@ resource "aws_appautoscaling_policy" "scale_up_policy" {
 resource "aws_appautoscaling_policy" "scale_down_policy" {
   count              = var.scaling_approach == "step_scaling" && var.requests_count_scaling == false ? 1 : 0
   name               = "${local.name}-scale-down-policy"
-  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.service.name}"
+  resource_id        = "service/${local.cluster_name}/${local.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
 
   service_namespace = "ecs"
@@ -115,7 +115,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
 
   dimensions = {
     ClusterName = local.cluster
-    ServiceName = aws_ecs_service.service.name
+    ServiceName = local.service.name
   }
 
   tags = merge(
@@ -139,7 +139,7 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
 
   dimensions = {
     ClusterName = local.cluster
-    ServiceName = aws_ecs_service.service.name
+    ServiceName = local.service.name
   }
 
   tags = merge(
@@ -163,7 +163,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
 
   dimensions = {
     ClusterName = local.cluster
-    ServiceName = aws_ecs_service.service.name
+    ServiceName = local.service.name
   }
 
   tags = merge(
@@ -187,7 +187,7 @@ resource "aws_cloudwatch_metric_alarm" "memory_low" {
 
   dimensions = {
     ClusterName = local.cluster
-    ServiceName = aws_ecs_service.service.name
+    ServiceName = local.service.name
   }
 
   tags = merge(
@@ -247,7 +247,7 @@ resource "aws_cloudwatch_metric_alarm" "requests_count_low" {
 resource "aws_appautoscaling_policy" "requests_count_scale_up_policy" {
   count              = var.scaling_approach == "step_scaling" && var.requests_count_scaling == true ? 1 : 0
   name               = "${local.name}-request-count-scale-up-policy"
-  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.service.name}"
+  resource_id        = "service/${local.cluster_name}/${local.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
 
   service_namespace = "ecs"
@@ -267,7 +267,7 @@ resource "aws_appautoscaling_policy" "requests_count_scale_up_policy" {
 resource "aws_appautoscaling_policy" "requests_count_scale_down_policy" {
   count              = var.scaling_approach == "step_scaling" && var.requests_count_scaling == true ? 1 : 0
   name               = "${local.name}-request-count-scale-down-policy"
-  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.service.name}"
+  resource_id        = "service/${local.cluster_name}/${local.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
 
   service_namespace = "ecs"
@@ -289,7 +289,7 @@ resource "aws_appautoscaling_policy" "requests_count_scale_down_policy" {
 resource "aws_appautoscaling_policy" "sqs_scale_up_policy" {
   count              = var.scaling_approach == "sqs" ? 1 : 0
   name               = var.sqs_scale_up_policy_name != null ? var.sqs_scale_up_policy_name : "${local.name}-sqs-scale-up-policy"
-  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.service.name}"
+  resource_id        = "service/${local.cluster_name}/${local.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 
@@ -308,7 +308,7 @@ resource "aws_appautoscaling_policy" "sqs_scale_up_policy" {
 resource "aws_appautoscaling_policy" "sqs_scale_down_policy" {
   count              = var.scaling_approach == "sqs" ? 1 : 0
   name               = var.sqs_scale_down_policy_name != null ? var.sqs_scale_down_policy_name : "${local.name}-sqs-scale-down-policy"
-  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.service.name}"
+  resource_id        = "service/${local.cluster_name}/${local.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 
@@ -395,7 +395,7 @@ resource "aws_cloudwatch_metric_alarm" "sqs_low" {
 resource "aws_appautoscaling_policy" "request_count_scale_up_policy" {
   count              = var.scaling_approach == "request_count" ? 1 : 0
   name               = var.alb_scale_up_policy_name != null ? var.alb_scale_up_policy_name : "${local.name}-request-count-scale-up-policy"
-  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.service.name}"
+  resource_id        = "service/${local.cluster_name}/${local.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 
@@ -414,7 +414,7 @@ resource "aws_appautoscaling_policy" "request_count_scale_up_policy" {
 resource "aws_appautoscaling_policy" "request_count_scale_down_policy" {
   count              = var.scaling_approach == "request_count" ? 1 : 0
   name               = var.alb_scale_down_policy_name != null ? var.alb_scale_down_policy_name : "${local.name}-request-count-scale-down-policy"
-  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.service.name}"
+  resource_id        = "service/${local.cluster_name}/${local.service.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 
