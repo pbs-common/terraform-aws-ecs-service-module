@@ -339,7 +339,7 @@ resource "aws_cloudwatch_metric_alarm" "sqs_high" {
     label       = "SQS Messages"
     metric {
       namespace   = "AWS/SQS"
-      metric_name = "ApproximateNumberOfMessagesVisible"
+      metric_name = var.sqs_metric_name
       period      = 60
       stat        = "Sum"
       dimensions = {
@@ -372,7 +372,7 @@ resource "aws_cloudwatch_metric_alarm" "sqs_low" {
     label       = "SQS Messages"
     metric {
       namespace   = "AWS/SQS"
-      metric_name = "ApproximateNumberOfMessagesVisible"
+      metric_name = var.sqs_metric_name
       period      = 60
       stat        = "Sum"
       dimensions = {
