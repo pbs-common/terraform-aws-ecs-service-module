@@ -562,6 +562,12 @@ variable "sqs_alarm_low_name" {
   type        = string
 }
 
+variable "sqs_metric_name" {
+  description = "CloudWatch metric name to use for SQS-based scaling alarms. Defaults to `ApproximateNumberOfMessagesVisible`."
+  default     = "ApproximateNumberOfMessagesVisible"
+  type        = string
+}
+
 variable "sqs_scale_up_policy_name" {
   description = "Override name for the SQS scale-up autoscaling policy. Defaults to `$${local.name}-sqs-scale-up-policy`."
   default     = null

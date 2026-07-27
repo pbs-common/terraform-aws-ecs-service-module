@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=11.0.2
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.0.2"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.0.2"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -73,7 +73,7 @@ module "service" {
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`11.0.2`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -298,6 +298,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_service_sg_name"></a> [service\_sg\_name](#input\_service\_sg\_name) | Prefix for the name of the service security group. If null, will use `${local.name}-service-sg-`. | `string` | `null` | no |
 | <a name="input_sqs_alarm_high_name"></a> [sqs\_alarm\_high\_name](#input\_sqs\_alarm\_high\_name) | Override name for the SQS high-watermark CloudWatch alarm. Defaults to `${local.name}-sqs-high`. | `string` | `null` | no |
 | <a name="input_sqs_alarm_low_name"></a> [sqs\_alarm\_low\_name](#input\_sqs\_alarm\_low\_name) | Override name for the SQS low-watermark CloudWatch alarm. Defaults to `${local.name}-sqs-low`. | `string` | `null` | no |
+| <a name="input_sqs_metric_name"></a> [sqs\_metric\_name](#input\_sqs\_metric\_name) | CloudWatch metric name to use for SQS-based scaling alarms. Defaults to `ApproximateNumberOfMessagesVisible`. | `string` | `"ApproximateNumberOfMessagesVisible"` | no |
 | <a name="input_sqs_queue_name"></a> [sqs\_queue\_name](#input\_sqs\_queue\_name) | Name of the SQS queue to use for SQS-based scaling. Required when scaling\_approach is `sqs` | `string` | `""` | no |
 | <a name="input_sqs_scale_down_policy_name"></a> [sqs\_scale\_down\_policy\_name](#input\_sqs\_scale\_down\_policy\_name) | Override name for the SQS scale-down autoscaling policy. Defaults to `${local.name}-sqs-scale-down-policy`. | `string` | `null` | no |
 | <a name="input_sqs_scale_up_policy_name"></a> [sqs\_scale\_up\_policy\_name](#input\_sqs\_scale\_up\_policy\_name) | Override name for the SQS scale-up autoscaling policy. Defaults to `${local.name}-sqs-scale-up-policy`. | `string` | `null` | no |
