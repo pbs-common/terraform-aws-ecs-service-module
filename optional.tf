@@ -651,3 +651,9 @@ variable "alb_scale_down_policy_name" {
   default     = null
   type        = string
 }
+
+variable "extra_acm_arns" {
+  description = "List of additional ACM certificate ARNs to attach to the HTTPS and NLB listeners."
+  default     = []
+  type        = list(string)
+}
