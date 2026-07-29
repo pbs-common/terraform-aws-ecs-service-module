@@ -274,3 +274,17 @@ resource "aws_eip" "nlb" {
   for_each = toset(local.nlb_eips)
   domain   = "vpc"
 }
+
+## Extra ACM Certificates for HTTPS (ALB) listener
+resource "aws_lb_listener_certificate" "https_extra" {
+  for_each        = local.create_https_listeners ? toset(var.extra_acm_arns) : toset([])
+  listener_arn    = aws_lb_listener.https[0].arn
+  certificate_arn = each.value
+}
+
+## Extra ACM Certificates for NLB listener
+resource "aws_lb_listener_certificate" "nlb_extra" {
+  for_each        = local.create_nlb_listeners ? toset(var.extra_acm_arns) : toset([])
+  listener_arn    = aws_lb_listener.nlb[0].arn
+  certificate_arn = each.value
+}
