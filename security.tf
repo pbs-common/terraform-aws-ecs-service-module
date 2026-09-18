@@ -3,7 +3,8 @@ resource "aws_security_group" "lb_sg" {
   description = "Controls access to the ${local.name} load balancer"
 
   vpc_id      = local.vpc_id
-  name_prefix = local.load_balancer_sg_name
+  name        = local.load_balancer_sg_name
+  name_prefix = local.load_balancer_sg_name_prefix
 
   tags = merge(
     local.tags,
@@ -107,7 +108,8 @@ resource "aws_security_group_rule" "user_to_nlb_sgs" {
 resource "aws_security_group" "service_sg" {
   description = "Controls access to the ${local.name} service resources"
   vpc_id      = local.vpc_id
-  name_prefix = local.service_sg_name
+  name        = local.service_sg_name
+  name_prefix = local.service_sg_name_prefix
 
   tags = merge(
     local.tags,

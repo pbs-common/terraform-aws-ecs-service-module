@@ -3,8 +3,6 @@ locals {
   container_name                       = var.container_name != null ? var.container_name : "app"
   task_family                          = var.task_family != null ? var.task_family : local.name
   load_balancer_name                   = var.load_balancer_name != null ? var.load_balancer_name : local.name
-  load_balancer_sg_name                = var.load_balancer_sg_name != null ? var.load_balancer_sg_name : "${local.load_balancer_name}-sg-"
-  service_sg_name                      = var.service_sg_name != null ? var.service_sg_name : "${local.name}-service-sg-"
   target_group_name                    = var.target_group_name != null ? var.target_group_name : local.name
   cluster                              = var.cluster != null ? var.cluster : one(module.cluster[*].name)
   cluster_name                         = startswith(local.cluster, "arn:") ? regex("[^/]+$", local.cluster) : local.cluster
@@ -26,13 +24,12 @@ locals {
   domain_name                          = !local.create_lb ? null : local.app_dns_record_count == 0 ? aws_lb.lb[0].dns_name : aws_route53_record.app[0].fqdn
   create_http_listeners                = local.create_lb && var.load_balancer_type == "application"
   create_https_listeners               = local.create_lb && var.load_balancer_type == "application" && !var.is_hosted_zone_private
-  only_create_http_listener            = local.create_http_listeners && !local.create_https_listeners
   create_nlb                           = local.create_lb && var.load_balancer_type == "network"
   create_nlb_listeners                 = local.create_nlb && var.nlb_protocol != "TCP"
   create_nlb_tcp_listeners             = local.create_nlb && var.nlb_protocol == "TCP" && var.tcp_port != null
   nlb_eips                             = local.create_nlb && var.create_attach_eip_to_nlb == true ? local.subnets : []
-  http_application_rule_count          = local.only_create_http_listener ? length(local.aliases) : 0
-  https_application_rule_count         = local.create_https_listeners ? length(local.aliases) : 0
+  http_application_rule_count          = local.create_http_listener_rules ? local.listener_rule_count : 0
+  https_application_rule_count         = local.create_https_listeners ? local.listener_rule_count : 0
   create_lb                            = var.create_lb == true
   create_cidr_access_rule              = length(var.lb_ingress_cidr_blocks) > 0
   create_sg_access_rule                = var.restricted_sg != null
@@ -52,9 +49,43 @@ locals {
   cloudmap_service_id                  = local.create_cloudmap_service ? one(aws_service_discovery_service.service[*].id) : null
   platform_version                     = var.platform_version != null ? var.platform_version : var.launch_type == "FARGATE" ? "LATEST" : null
   extra_https_rules_count              = local.create_https_listeners ? length(var.extra_https_listener_rules) : 0
-  extra_http_rules_count               = local.only_create_http_listener ? length(var.extra_http_listener_rules) : 0
+  extra_http_rules_count               = local.create_http_fixed_response_listener ? length(var.extra_http_listener_rules) : 0
   next_https_priority                  = var.route_priority + local.https_application_rule_count
   next_http_priority                   = var.route_priority + local.http_application_rule_count
+
+  # Security group names. A security group takes either a generated-with-suffix name or an exact
+  # one, never both, so the two modes are mutually exclusive and one side is always null.
+  load_balancer_sg_name_base = var.load_balancer_sg_name != null ? var.load_balancer_sg_name : "${local.load_balancer_name}-sg${var.use_sg_name_prefix ? "-" : ""}"
+  service_sg_name_base       = var.service_sg_name != null ? var.service_sg_name : "${local.name}-service-sg${var.use_sg_name_prefix ? "-" : ""}"
+
+  load_balancer_sg_name        = var.use_sg_name_prefix ? null : local.load_balancer_sg_name_base
+  load_balancer_sg_name_prefix = var.use_sg_name_prefix ? local.load_balancer_sg_name_base : null
+  service_sg_name              = var.use_sg_name_prefix ? null : local.service_sg_name_base
+  service_sg_name_prefix       = var.use_sg_name_prefix ? local.service_sg_name_base : null
+
+  # HTTP listener default action. When http_listener_action is null this reproduces the previous
+  # derivation: reject by default when there is no HTTPS listener, otherwise redirect or forward.
+  # Asking for fixed_response explicitly is what allows a rejecting HTTP listener to sit alongside
+  # an HTTPS one, with both serving traffic only through their listener rules.
+  http_listener_action = var.http_listener_action != null ? var.http_listener_action : (
+    !local.create_https_listeners ? "fixed_response" : var.http_redirect ? "redirect" : "forward"
+  )
+
+  create_http_fixed_response_listener = local.create_http_listeners && local.http_listener_action == "fixed_response"
+  create_http_redirect_listener       = local.create_http_listeners && local.create_https_listeners && local.http_listener_action == "redirect"
+  create_http_forward_listener        = local.create_http_listeners && local.create_https_listeners && local.http_listener_action == "forward"
+
+  # Rules are only reachable on a listener that rejects by default; a redirecting or forwarding
+  # listener handles everything in its default action.
+  create_http_listener_rules = var.create_http_listener_rules != null ? var.create_http_listener_rules && local.create_http_fixed_response_listener : local.create_http_fixed_response_listener
+
+  # One rule per alias when matching on host header, otherwise a single rule matching on the
+  # custom headers alone — repeating a header-only rule per alias would just duplicate it.
+  listener_rule_count = var.listener_rule_host_header ? length(local.aliases) : 1
+
+  # SQS scaling alarms, configured independently for scale up and scale down.
+  sqs_up_metric_name   = var.sqs_up_metric_name != null ? var.sqs_up_metric_name : var.sqs_metric_name
+  sqs_down_metric_name = var.sqs_down_metric_name != null ? var.sqs_down_metric_name : var.sqs_metric_name
 
   creator = "terraform"
 
