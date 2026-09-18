@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.0
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -73,7 +73,7 @@ module "service" {
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`11.2.0`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -96,7 +96,7 @@ Below is automatically generated documentation on this Terraform module using [t
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.54.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.57.1 |
 
 ## Modules
 
@@ -212,6 +212,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_container_name"></a> [container\_name](#input\_container\_name) | (optional) name for the container to have | `string` | `null` | no |
 | <a name="input_container_port"></a> [container\_port](#input\_container\_port) | (optional) port the container is exposing | `number` | `80` | no |
 | <a name="input_container_protocol"></a> [container\_protocol](#input\_container\_protocol) | Protocol to use in connection to the container | `string` | `"HTTP"` | no |
+| <a name="input_cpu_count_scaling"></a> [cpu\_count\_scaling](#input\_cpu\_count\_scaling) | Use CPU CloudWatch metric for scaling | `bool` | `true` | no |
 | <a name="input_cpu_reservation"></a> [cpu\_reservation](#input\_cpu\_reservation) | (optional) CPU reservation for task | `number` | `256` | no |
 | <a name="input_create_attach_eip_to_nlb"></a> [create\_attach\_eip\_to\_nlb](#input\_create\_attach\_eip\_to\_nlb) | Create EIPs for each subnet and attach them to the NLB (public only) | `bool` | `false` | no |
 | <a name="input_create_lb"></a> [create\_lb](#input\_create\_lb) | Create load balancer for service. If creating a virtual node, will ignore value. | `bool` | `true` | no |
@@ -262,6 +263,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_log_group_class"></a> [log\_group\_class](#input\_log\_group\_class) | (Optional) log class of the log group. Possible values are: STANDARD or INFREQUENT\_ACCESS | `string` | `"INFREQUENT_ACCESS"` | no |
 | <a name="input_log_group_name"></a> [log\_group\_name](#input\_log\_group\_name) | (optional) name for the log group | `string` | `null` | no |
 | <a name="input_max_capacity"></a> [max\_capacity](#input\_max\_capacity) | The maximum capacity of tasks for this service | `number` | `2` | no |
+| <a name="input_memory_count_scaling"></a> [memory\_count\_scaling](#input\_memory\_count\_scaling) | Use Memory CloudWatch metric for scaling | `bool` | `false` | no |
 | <a name="input_memory_reservation"></a> [memory\_reservation](#input\_memory\_reservation) | (optional) memory reservation for task | `number` | `512` | no |
 | <a name="input_mesh_name"></a> [mesh\_name](#input\_mesh\_name) | (optional) the name for the App Mesh this task is associated with. If null, ignored | `string` | `null` | no |
 | <a name="input_min_capacity"></a> [min\_capacity](#input\_min\_capacity) | The minimum capacity of tasks for this service | `number` | `1` | no |

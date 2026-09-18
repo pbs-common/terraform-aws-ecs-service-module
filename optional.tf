@@ -128,6 +128,18 @@ variable "scale_down_requests_count_per_target" {
   type        = number
 }
 
+variable "cpu_count_scaling" {
+  description = "Use CPU CloudWatch metric for scaling"
+  default     = true
+  type        = bool
+}
+
+variable "memory_count_scaling" {
+  description = "Use Memory CloudWatch metric for scaling"
+  default     = false
+  type        = bool
+}
+
 variable "requests_count_scaling" {
   description = "Use RequestCountPerTarget CloudWatch metric for scaling"
   default     = false
