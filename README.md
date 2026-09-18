@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.0
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -69,11 +69,59 @@ module "service" {
 > How much of this applies to you is dependent on your cluster configuration and use-case, however.
 > Feel free to use the cluster provisioned by this module when starting out to reduce the friction of getting started, but consider moving to a dedicated cluster as soon as convenient.
 
+### Security Groups
+
+This module creates a security group for the service's tasks, and another for the load balancer when it creates one. Each service therefore has its own security group rather than sharing one, which keeps the grant to a database or cache scoped to the single service that needs it.
+
+Grant a service access to a resource by adding a rule to *that resource's* security group, sourced from this module's `service_sg` output — see [the sgs example](/examples/sgs).
+
+Both security groups are named with a prefix by default, letting AWS append a unique suffix. Set `use_sg_name_prefix = false` to give them exact names via `load_balancer_sg_name` and `service_sg_name`. That is what allows security groups that already exist under a fixed name to be adopted by this module, since a security group cannot switch between a generated and a fixed name without being replaced.
+
+### Listeners
+
+For an ALB, the HTTPS listener rejects requests by default and forwards only those matched by a listener rule. What happens on the HTTP listener depends on `http_listener_action`:
+
+| `http_listener_action` | HTTP listener behaviour |
+|---|---|
+| `null` (default) | Redirects to HTTPS, or forwards to the target group when `http_redirect = false`. With no HTTPS listener, rejects by default and serves traffic through listener rules. |
+| `redirect` | Redirects to HTTPS. |
+| `forward` | Forwards to the target group. |
+| `fixed_response` | Rejects by default and serves traffic through listener rules, even when an HTTPS listener also exists. |
+
+`listener_default_status_code` sets what the rejecting default action returns on both listeners (`403` by default).
+
+Listener rules match the service's aliases on the host header, plus any `custom_http_headers`. Set `listener_rule_host_header = false` to match on the custom headers alone — for a service reachable only through a CDN that injects a shared secret header, say, where the host header varies. One rule is then created per listener instead of one per alias, and `custom_http_headers` must be non-empty because an ALB listener rule needs at least one condition.
+
+See [the cdn-only example](/examples/cdn-only) for a service that rejects on both listeners and routes on a CDN header alone.
+
+### SQS Scaling
+
+With `scaling_approach = "sqs"`, the service scales on an SQS queue's metrics. The scale-up and scale-down alarms are configured independently, because a queue-backed worker usually needs asymmetric signals: scale up as soon as work arrives, but scale down only once nothing is still in flight.
+
+`sqs_metric_name` sets the metric for both alarms. Override either side with `sqs_up_metric_name` / `sqs_down_metric_name`, and tune each alarm with the matching `sqs_up_*` / `sqs_down_*` variable for statistic, comparison operator, evaluation periods and datapoints to alarm.
+
+A worker that must not be scaled down while messages are in flight, for instance, scales up on `ApproximateNumberOfMessagesVisible` and down on `ApproximateNumberOfMessagesNotVisible`:
+
+```hcl
+scaling_approach = "sqs"
+sqs_queue_name   = "my-app-work"
+
+sqs_up_metric_name         = "ApproximateNumberOfMessagesVisible"
+sqs_visible_up_threshold   = 100
+sqs_up_evaluation_periods  = 2
+sqs_up_datapoints_to_alarm = 2
+
+sqs_down_metric_name         = "ApproximateNumberOfMessagesNotVisible"
+sqs_visible_down_threshold   = 5
+sqs_down_evaluation_periods  = 2
+sqs_down_datapoints_to_alarm = 2
+```
+
 ## Adding This Version of the Module
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`11.2.0`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -96,7 +144,7 @@ Below is automatically generated documentation on this Terraform module using [t
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.54.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.57.1 |
 
 ## Modules
 
@@ -214,6 +262,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_container_protocol"></a> [container\_protocol](#input\_container\_protocol) | Protocol to use in connection to the container | `string` | `"HTTP"` | no |
 | <a name="input_cpu_reservation"></a> [cpu\_reservation](#input\_cpu\_reservation) | (optional) CPU reservation for task | `number` | `256` | no |
 | <a name="input_create_attach_eip_to_nlb"></a> [create\_attach\_eip\_to\_nlb](#input\_create\_attach\_eip\_to\_nlb) | Create EIPs for each subnet and attach them to the NLB (public only) | `bool` | `false` | no |
+| <a name="input_create_http_listener_rules"></a> [create\_http\_listener\_rules](#input\_create\_http\_listener\_rules) | (optional) Create the application listener rules on the HTTP listener. When null, rules are created whenever the HTTP listener's default action is `fixed_response` (otherwise the listener redirects or forwards everything and rules would be unreachable). Set to false for an HTTP listener that rejects every request. | `bool` | `null` | no |
 | <a name="input_create_lb"></a> [create\_lb](#input\_create\_lb) | Create load balancer for service. If creating a virtual node, will ignore value. | `bool` | `true` | no |
 | <a name="input_custom_http_headers"></a> [custom\_http\_headers](#input\_custom\_http\_headers) | (optional) Custom HTTP headers for application load balancers. Format should be a list of maps with `name` and `value` keys. e.g. [{ name = "header1", value = "value1"}, { name = "header2", value = "value2"}] | `list(object({ name = string, value = string }))` | `[]` | no |
 | <a name="input_custom_target_group_arns"></a> [custom\_target\_group\_arns](#input\_custom\_target\_group\_arns) | List of existing ALB target group ARNs to attach to the service instead of creating a new load balancer. | `list(string)` | `[]` | no |
@@ -244,6 +293,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_healthcheck_timeout"></a> [healthcheck\_timeout](#input\_healthcheck\_timeout) | The amount of time, in seconds, during which no response means a failed health check | `number` | `6` | no |
 | <a name="input_healthcheck_unhealthy_threshold"></a> [healthcheck\_unhealthy\_threshold](#input\_healthcheck\_unhealthy\_threshold) | The number of consecutive health check failures required before considering the target unhealthy | `number` | `3` | no |
 | <a name="input_hosted_zone"></a> [hosted\_zone](#input\_hosted\_zone) | Name of the hosted zone for DNS. e.g. hosted\_zone = example.org --> service.example.org. Based on the is\_hosted\_zone\_private, this is the primary or the private hosted zone. | `string` | `null` | no |
+| <a name="input_http_listener_action"></a> [http\_listener\_action](#input\_http\_listener\_action) | (optional) Default action of the HTTP listener. Valid values are `redirect` (to HTTPS), `forward` (to the target group) and `fixed_response`.<br/><br/>When null the action is derived as before: `fixed_response` when there is no HTTPS listener, otherwise `redirect` or `forward` according to `http_redirect`.<br/><br/>Set this to `fixed_response` explicitly to get an HTTP listener that rejects by default *alongside* an HTTPS listener, so both listeners serve traffic only through their listener rules. `redirect` and `forward` still require an HTTPS listener. | `string` | `null` | no |
 | <a name="input_http_port"></a> [http\_port](#input\_http\_port) | HTTP port number. | `number` | `"80"` | no |
 | <a name="input_http_redirect"></a> [http\_redirect](#input\_http\_redirect) | Redirect HTTP traffic to HTTPS. If set to false, HTTP traffic will be forwarded to the target groups | `bool` | `true` | no |
 | <a name="input_https_port"></a> [https\_port](#input\_https\_port) | HTTPS port number. | `number` | `"443"` | no |
@@ -256,8 +306,10 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_lb_deregistration_delay"></a> [lb\_deregistration\_delay](#input\_lb\_deregistration\_delay) | (optional) task deregistration delay for the load balancer | `number` | `300` | no |
 | <a name="input_lb_ingress_cidr_blocks"></a> [lb\_ingress\_cidr\_blocks](#input\_lb\_ingress\_cidr\_blocks) | CIDR blocks allowed to reach the load balancer (HTTP/HTTPS ingress). Defaults to open internet access. | `list(string)` | <pre>[<br/>  "0.0.0.0/0"<br/>]</pre> | no |
 | <a name="input_lb_scheme"></a> [lb\_scheme](#input\_lb\_scheme) | Scheme for the load balancer and subnet selection. "public" creates an internet-facing LB in public subnets. "internal" creates an internal LB in private subnets. | `string` | `"public"` | no |
+| <a name="input_listener_default_status_code"></a> [listener\_default\_status\_code](#input\_listener\_default\_status\_code) | (optional) HTTP status code returned by the default `fixed-response` action of the HTTP and HTTPS listeners. Requests that match no listener rule get this. Set it to match an existing listener you are adopting, since a differing status code is an in-place listener update that briefly changes what unmatched requests receive. | `string` | `"403"` | no |
+| <a name="input_listener_rule_host_header"></a> [listener\_rule\_host\_header](#input\_listener\_rule\_host\_header) | (optional) Match the service's aliases with a `host_header` condition on the application listener rules. Set to false to route on `custom_http_headers` alone — for a service reachable only through a CDN that injects a shared secret header, say, where the host header varies. With this false a single rule is created per listener instead of one per alias, and `custom_http_headers` must be non-empty because a listener rule needs at least one condition. | `bool` | `true` | no |
 | <a name="input_load_balancer_name"></a> [load\_balancer\_name](#input\_load\_balancer\_name) | Load balancer name. Will default to product if not defined. | `string` | `null` | no |
-| <a name="input_load_balancer_sg_name"></a> [load\_balancer\_sg\_name](#input\_load\_balancer\_sg\_name) | Prefix for the name of the load balancer security group. If null, will use `${local.load_balancer_name}-sg-`. | `string` | `null` | no |
+| <a name="input_load_balancer_sg_name"></a> [load\_balancer\_sg\_name](#input\_load\_balancer\_sg\_name) | Name of the load balancer security group. Used as a prefix unless `use_sg_name_prefix` is false. If null, will use `${local.load_balancer_name}-sg-` (prefix) or `${local.load_balancer_name}-sg` (exact name). | `string` | `null` | no |
 | <a name="input_load_balancer_type"></a> [load\_balancer\_type](#input\_load\_balancer\_type) | Type of load balancer to use. application, network or gateway. | `string` | `"application"` | no |
 | <a name="input_log_group_class"></a> [log\_group\_class](#input\_log\_group\_class) | (Optional) log class of the log group. Possible values are: STANDARD or INFREQUENT\_ACCESS | `string` | `"INFREQUENT_ACCESS"` | no |
 | <a name="input_log_group_name"></a> [log\_group\_name](#input\_log\_group\_name) | (optional) name for the log group | `string` | `null` | no |
@@ -298,13 +350,24 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_scaling_evaluation_period"></a> [scaling\_evaluation\_period](#input\_scaling\_evaluation\_period) | Scaling evaluation period in seconds | `number` | `60` | no |
 | <a name="input_scaling_evaluation_periods"></a> [scaling\_evaluation\_periods](#input\_scaling\_evaluation\_periods) | Number of periods over which data is compared to the threshold | `number` | `1` | no |
 | <a name="input_secrets"></a> [secrets](#input\_secrets) | (optional) secrets to be passed to the container. By default none is passed | <pre>set(object({<br/>    name      = string<br/>    valueFrom = string<br/>  }))</pre> | `[]` | no |
-| <a name="input_service_sg_name"></a> [service\_sg\_name](#input\_service\_sg\_name) | Prefix for the name of the service security group. If null, will use `${local.name}-service-sg-`. | `string` | `null` | no |
+| <a name="input_service_sg_name"></a> [service\_sg\_name](#input\_service\_sg\_name) | Name of the service security group. Used as a prefix unless `use_sg_name_prefix` is false. If null, will use `${local.name}-service-sg-` (prefix) or `${local.name}-service-sg` (exact name). | `string` | `null` | no |
 | <a name="input_sqs_alarm_high_name"></a> [sqs\_alarm\_high\_name](#input\_sqs\_alarm\_high\_name) | Override name for the SQS high-watermark CloudWatch alarm. Defaults to `${local.name}-sqs-high`. | `string` | `null` | no |
 | <a name="input_sqs_alarm_low_name"></a> [sqs\_alarm\_low\_name](#input\_sqs\_alarm\_low\_name) | Override name for the SQS low-watermark CloudWatch alarm. Defaults to `${local.name}-sqs-low`. | `string` | `null` | no |
-| <a name="input_sqs_metric_name"></a> [sqs\_metric\_name](#input\_sqs\_metric\_name) | CloudWatch metric name to use for SQS-based scaling alarms. Defaults to `ApproximateNumberOfMessagesVisible`. | `string` | `"ApproximateNumberOfMessagesVisible"` | no |
+| <a name="input_sqs_down_comparison_operator"></a> [sqs\_down\_comparison\_operator](#input\_sqs\_down\_comparison\_operator) | (optional) How the SQS scale-down alarm compares the metric to `sqs_visible_down_threshold`. | `string` | `"LessThanThreshold"` | no |
+| <a name="input_sqs_down_datapoints_to_alarm"></a> [sqs\_down\_datapoints\_to\_alarm](#input\_sqs\_down\_datapoints\_to\_alarm) | (optional) Datapoints within the evaluation periods that must breach before the SQS scale-down alarm fires. Defaults to all of them. | `number` | `null` | no |
+| <a name="input_sqs_down_evaluation_periods"></a> [sqs\_down\_evaluation\_periods](#input\_sqs\_down\_evaluation\_periods) | (optional) Number of periods the SQS scale-down alarm evaluates. Raise this to make scale-down deliberately slower than scale-up. | `number` | `1` | no |
+| <a name="input_sqs_down_metric_name"></a> [sqs\_down\_metric\_name](#input\_sqs\_down\_metric\_name) | (optional) CloudWatch metric name for the SQS scale-down alarm. Falls back to `sqs_metric_name`. Set this to a different metric than the scale-up alarm to avoid scaling down while messages are still in flight — `ApproximateNumberOfMessagesNotVisible` or `ApproximateAgeOfOldestMessage`, for instance. | `string` | `null` | no |
+| <a name="input_sqs_down_statistic"></a> [sqs\_down\_statistic](#input\_sqs\_down\_statistic) | (optional) Statistic applied to the metric of the SQS scale-down alarm. | `string` | `"Sum"` | no |
+| <a name="input_sqs_metric_name"></a> [sqs\_metric\_name](#input\_sqs\_metric\_name) | CloudWatch metric name to use for SQS-based scaling alarms. Defaults to `ApproximateNumberOfMessagesVisible`. Acts as the fallback for `sqs_up_metric_name` and `sqs_down_metric_name`. | `string` | `"ApproximateNumberOfMessagesVisible"` | no |
+| <a name="input_sqs_period"></a> [sqs\_period](#input\_sqs\_period) | (optional) Period, in seconds, over which each SQS scaling alarm's metric is aggregated. | `number` | `60` | no |
 | <a name="input_sqs_queue_name"></a> [sqs\_queue\_name](#input\_sqs\_queue\_name) | Name of the SQS queue to use for SQS-based scaling. Required when scaling\_approach is `sqs` | `string` | `""` | no |
 | <a name="input_sqs_scale_down_policy_name"></a> [sqs\_scale\_down\_policy\_name](#input\_sqs\_scale\_down\_policy\_name) | Override name for the SQS scale-down autoscaling policy. Defaults to `${local.name}-sqs-scale-down-policy`. | `string` | `null` | no |
 | <a name="input_sqs_scale_up_policy_name"></a> [sqs\_scale\_up\_policy\_name](#input\_sqs\_scale\_up\_policy\_name) | Override name for the SQS scale-up autoscaling policy. Defaults to `${local.name}-sqs-scale-up-policy`. | `string` | `null` | no |
+| <a name="input_sqs_up_comparison_operator"></a> [sqs\_up\_comparison\_operator](#input\_sqs\_up\_comparison\_operator) | (optional) How the SQS scale-up alarm compares the metric to `sqs_visible_up_threshold`. | `string` | `"GreaterThanThreshold"` | no |
+| <a name="input_sqs_up_datapoints_to_alarm"></a> [sqs\_up\_datapoints\_to\_alarm](#input\_sqs\_up\_datapoints\_to\_alarm) | (optional) Datapoints within the evaluation periods that must breach before the SQS scale-up alarm fires. Defaults to all of them. | `number` | `null` | no |
+| <a name="input_sqs_up_evaluation_periods"></a> [sqs\_up\_evaluation\_periods](#input\_sqs\_up\_evaluation\_periods) | (optional) Number of periods the SQS scale-up alarm evaluates. | `number` | `1` | no |
+| <a name="input_sqs_up_metric_name"></a> [sqs\_up\_metric\_name](#input\_sqs\_up\_metric\_name) | (optional) CloudWatch metric name for the SQS scale-up alarm. Falls back to `sqs_metric_name`. | `string` | `null` | no |
+| <a name="input_sqs_up_statistic"></a> [sqs\_up\_statistic](#input\_sqs\_up\_statistic) | (optional) Statistic applied to the metric of the SQS scale-up alarm. | `string` | `"Sum"` | no |
 | <a name="input_sqs_visible_down_threshold"></a> [sqs\_visible\_down\_threshold](#input\_sqs\_visible\_down\_threshold) | Number of visible SQS messages below which a scale-down event is triggered | `number` | `10` | no |
 | <a name="input_sqs_visible_up_threshold"></a> [sqs\_visible\_up\_threshold](#input\_sqs\_visible\_up\_threshold) | Number of visible SQS messages that triggers a scale-up event | `number` | `100` | no |
 | <a name="input_ssm_path"></a> [ssm\_path](#input\_ssm\_path) | (optional) path to the ssm parameters you want pulled into your container during execution of the entrypoint | `string` | `null` | no |
@@ -319,6 +382,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_task_subnet_scheme"></a> [task\_subnet\_scheme](#input\_task\_subnet\_scheme) | Subnet placement for ECS tasks. "private" (default) places tasks in private subnets. "public" places tasks in public subnets. Only respected when lb\_scheme is "public"; tasks are always private when lb\_scheme is "internal". | `string` | `"private"` | no |
 | <a name="input_tcp_port"></a> [tcp\_port](#input\_tcp\_port) | NLB TCP port number. Ignored for application load balancers. | `number` | `null` | no |
 | <a name="input_track_latest"></a> [track\_latest](#input\_track\_latest) | (optional) Whether should track latest ACTIVE task definition on AWS or the one created with the resource stored in state. | `bool` | `false` | no |
+| <a name="input_use_sg_name_prefix"></a> [use\_sg\_name\_prefix](#input\_use\_sg\_name\_prefix) | (optional) Treat `load_balancer_sg_name` and `service_sg_name` as name prefixes, letting AWS append a unique suffix. Set to false to give the security groups those exact names — needed to adopt security groups that already exist under a fixed name, since a security group cannot switch between a generated and a fixed name without being replaced. | `bool` | `true` | no |
 | <a name="input_use_xray_sidecar"></a> [use\_xray\_sidecar](#input\_use\_xray\_sidecar) | (optional) if set to null, will use the sidecar to trace the task if envoy is used, as that automatically implements tracing configs. | `bool` | `null` | no |
 | <a name="input_virtual_gateway"></a> [virtual\_gateway](#input\_virtual\_gateway) | (optional) the name of the virtual gateway associated with this task definition. If null, ignored | `string` | `null` | no |
 | <a name="input_virtual_node"></a> [virtual\_node](#input\_virtual\_node) | (optional) the name of the virtual node associated with this task definition. Ignored if virtual\_gateway set. If null, ignored | `string` | `null` | no |
