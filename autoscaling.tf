@@ -327,8 +327,9 @@ resource "aws_appautoscaling_policy" "sqs_scale_down_policy" {
 resource "aws_cloudwatch_metric_alarm" "sqs_high" {
   count               = var.scaling_approach == "sqs" ? 1 : 0
   alarm_name          = var.sqs_alarm_high_name != null ? var.sqs_alarm_high_name : "${local.name}-sqs-high"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 1
+  comparison_operator = var.sqs_up_comparison_operator
+  evaluation_periods  = var.sqs_up_evaluation_periods
+  datapoints_to_alarm = var.sqs_up_datapoints_to_alarm
   threshold           = var.sqs_visible_up_threshold
   alarm_description   = "Alarm when SQS messages exceed threshold for ${local.name}"
   treat_missing_data  = "missing"
@@ -339,9 +340,9 @@ resource "aws_cloudwatch_metric_alarm" "sqs_high" {
     label       = "SQS Messages"
     metric {
       namespace   = "AWS/SQS"
-      metric_name = var.sqs_metric_name
-      period      = 60
-      stat        = "Sum"
+      metric_name = local.sqs_up_metric_name
+      period      = var.sqs_period
+      stat        = var.sqs_up_statistic
       dimensions = {
         QueueName = var.sqs_queue_name
       }
@@ -360,8 +361,9 @@ resource "aws_cloudwatch_metric_alarm" "sqs_high" {
 resource "aws_cloudwatch_metric_alarm" "sqs_low" {
   count               = var.scaling_approach == "sqs" ? 1 : 0
   alarm_name          = var.sqs_alarm_low_name != null ? var.sqs_alarm_low_name : "${local.name}-sqs-low"
-  comparison_operator = "LessThanThreshold"
-  evaluation_periods  = 1
+  comparison_operator = var.sqs_down_comparison_operator
+  evaluation_periods  = var.sqs_down_evaluation_periods
+  datapoints_to_alarm = var.sqs_down_datapoints_to_alarm
   threshold           = var.sqs_visible_down_threshold
   alarm_description   = "Alarm when SQS messages are below threshold for ${local.name}"
   treat_missing_data  = "missing"
@@ -372,9 +374,9 @@ resource "aws_cloudwatch_metric_alarm" "sqs_low" {
     label       = "SQS Messages"
     metric {
       namespace   = "AWS/SQS"
-      metric_name = var.sqs_metric_name
-      period      = 60
-      stat        = "Sum"
+      metric_name = local.sqs_down_metric_name
+      period      = var.sqs_period
+      stat        = var.sqs_down_statistic
       dimensions = {
         QueueName = var.sqs_queue_name
       }

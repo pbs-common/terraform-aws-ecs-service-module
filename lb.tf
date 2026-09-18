@@ -34,25 +34,25 @@ resource "aws_lb" "lb" {
 
 ## HTTP Listeners
 resource "aws_lb_listener" "http" {
-  count             = local.only_create_http_listener ? 1 : 0
+  count             = local.create_http_fixed_response_listener ? 1 : 0
   load_balancer_arn = aws_lb.lb[0].id
   port              = var.http_port
   protocol          = "HTTP"
 
-  # We 403 by default, unless one of the application rules below is met.
+  # We reject by default, unless one of the application rules below is met.
 
   default_action {
     type = "fixed-response"
 
     fixed_response {
       content_type = "text/plain"
-      status_code  = "403"
+      status_code  = var.listener_default_status_code
     }
   }
 }
 
 resource "aws_lb_listener" "http_redirect" {
-  count             = local.create_https_listeners && var.http_redirect ? 1 : 0
+  count             = local.create_http_redirect_listener ? 1 : 0
   load_balancer_arn = aws_lb.lb[0].id
   port              = var.http_port
   protocol          = "HTTP"
@@ -69,7 +69,7 @@ resource "aws_lb_listener" "http_redirect" {
 }
 
 resource "aws_lb_listener" "http_forward" {
-  count             = local.create_https_listeners && !var.http_redirect ? 1 : 0
+  count             = local.create_http_forward_listener ? 1 : 0
   load_balancer_arn = aws_lb.lb[0].id
   port              = var.http_port
   protocol          = "HTTP"
@@ -89,14 +89,14 @@ resource "aws_lb_listener" "https" {
   certificate_arn   = local.acm_arn
   ssl_policy        = var.alb_ssl_policy
 
-  # We 403 by default, unless one of the application rules below is met.
+  # We reject by default, unless one of the application rules below is met.
 
   default_action {
     type = "fixed-response"
 
     fixed_response {
       content_type = "text/plain"
-      status_code  = "403"
+      status_code  = var.listener_default_status_code
     }
   }
 
@@ -175,9 +175,12 @@ resource "aws_lb_listener_rule" "http_application_rule" {
     target_group_arn = aws_lb_target_group.target_group[0].arn
   }
 
-  condition {
-    host_header {
-      values = [element(local.aliases, count.index)]
+  dynamic "condition" {
+    for_each = var.listener_rule_host_header ? [element(local.aliases, count.index)] : []
+    content {
+      host_header {
+        values = [condition.value]
+      }
     }
   }
 
@@ -202,9 +205,12 @@ resource "aws_lb_listener_rule" "https_application_rule" {
     target_group_arn = aws_lb_target_group.target_group[0].arn
   }
 
-  condition {
-    host_header {
-      values = [element(local.aliases, count.index)]
+  dynamic "condition" {
+    for_each = var.listener_rule_host_header ? [element(local.aliases, count.index)] : []
+    content {
+      host_header {
+        values = [condition.value]
+      }
     }
   }
 

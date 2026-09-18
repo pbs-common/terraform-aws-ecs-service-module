@@ -60,7 +60,7 @@ output "https_listener_arn" {
 
 output "http_listener_arn" {
   description = "ARN of the HTTP listener. Useful when adding extra listener rules to the listener."
-  value       = local.only_create_http_listener ? one(aws_lb_listener.http[*].arn) : local.create_https_listeners && var.http_redirect ? one(aws_lb_listener.http_redirect[*].arn) : null
+  value       = local.create_http_fixed_response_listener ? one(aws_lb_listener.http[*].arn) : local.create_http_redirect_listener ? one(aws_lb_listener.http_redirect[*].arn) : local.create_http_forward_listener ? one(aws_lb_listener.http_forward[*].arn) : null
 }
 
 output "lb_sg" {

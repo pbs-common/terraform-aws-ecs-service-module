@@ -346,6 +346,48 @@ variable "http_redirect" {
   type        = bool
 }
 
+variable "http_listener_action" {
+  description = <<EOT
+(optional) Default action of the HTTP listener. Valid values are `redirect` (to HTTPS), `forward` (to the target group) and `fixed_response`.
+
+When null the action is derived as before: `fixed_response` when there is no HTTPS listener, otherwise `redirect` or `forward` according to `http_redirect`.
+
+Set this to `fixed_response` explicitly to get an HTTP listener that rejects by default *alongside* an HTTPS listener, so both listeners serve traffic only through their listener rules. `redirect` and `forward` still require an HTTPS listener.
+EOT
+  default     = null
+  type        = string
+  validation {
+    condition     = var.http_listener_action == null || contains(["redirect", "forward", "fixed_response"], coalesce(var.http_listener_action, "redirect"))
+    error_message = "The http_listener_action must be `redirect`, `forward` or `fixed_response`."
+  }
+}
+
+variable "listener_default_status_code" {
+  description = "(optional) HTTP status code returned by the default `fixed-response` action of the HTTP and HTTPS listeners. Requests that match no listener rule get this. Set it to match an existing listener you are adopting, since a differing status code is an in-place listener update that briefly changes what unmatched requests receive."
+  default     = "403"
+  type        = string
+  validation {
+    condition     = can(regex("^[2-5][0-9][0-9]$", var.listener_default_status_code))
+    error_message = "The listener_default_status_code must be a three-digit HTTP status code between 200 and 599."
+  }
+}
+
+variable "create_http_listener_rules" {
+  description = "(optional) Create the application listener rules on the HTTP listener. When null, rules are created whenever the HTTP listener's default action is `fixed_response` (otherwise the listener redirects or forwards everything and rules would be unreachable). Set to false for an HTTP listener that rejects every request."
+  default     = null
+  type        = bool
+}
+
+variable "listener_rule_host_header" {
+  description = "(optional) Match the service's aliases with a `host_header` condition on the application listener rules. Set to false to route on `custom_http_headers` alone — for a service reachable only through a CDN that injects a shared secret header, say, where the host header varies. With this false a single rule is created per listener instead of one per alias, and `custom_http_headers` must be non-empty because a listener rule needs at least one condition."
+  default     = true
+  type        = bool
+  validation {
+    condition     = var.listener_rule_host_header || length(var.custom_http_headers) > 0
+    error_message = "When listener_rule_host_header is false, custom_http_headers must contain at least one header: an ALB listener rule must have at least one condition."
+  }
+}
+
 variable "tcp_port" {
   description = "NLB TCP port number. Ignored for application load balancers."
   default     = null
@@ -455,15 +497,21 @@ variable "idle_timeout" {
 }
 
 variable "load_balancer_sg_name" {
-  description = "Prefix for the name of the load balancer security group. If null, will use `$${local.load_balancer_name}-sg-`."
+  description = "Name of the load balancer security group. Used as a prefix unless `use_sg_name_prefix` is false. If null, will use `$${local.load_balancer_name}-sg-` (prefix) or `$${local.load_balancer_name}-sg` (exact name)."
   default     = null
   type        = string
 }
 
 variable "service_sg_name" {
-  description = "Prefix for the name of the service security group. If null, will use `$${local.name}-service-sg-`."
+  description = "Name of the service security group. Used as a prefix unless `use_sg_name_prefix` is false. If null, will use `$${local.name}-service-sg-` (prefix) or `$${local.name}-service-sg` (exact name)."
   default     = null
   type        = string
+}
+
+variable "use_sg_name_prefix" {
+  description = "(optional) Treat `load_balancer_sg_name` and `service_sg_name` as name prefixes, letting AWS append a unique suffix. Set to false to give the security groups those exact names — needed to adopt security groups that already exist under a fixed name, since a security group cannot switch between a generated and a fixed name without being replaced."
+  default     = true
+  type        = bool
 }
 
 variable "enable_cross_zone_load_balancing" {
@@ -563,9 +611,95 @@ variable "sqs_alarm_low_name" {
 }
 
 variable "sqs_metric_name" {
-  description = "CloudWatch metric name to use for SQS-based scaling alarms. Defaults to `ApproximateNumberOfMessagesVisible`."
+  description = "CloudWatch metric name to use for SQS-based scaling alarms. Defaults to `ApproximateNumberOfMessagesVisible`. Acts as the fallback for `sqs_up_metric_name` and `sqs_down_metric_name`."
   default     = "ApproximateNumberOfMessagesVisible"
   type        = string
+}
+
+# The scale-up and scale-down alarms are configured independently because a queue-backed worker
+# usually needs asymmetric signals: scale up on work arriving, but scale down only once nothing is
+# still in flight. Every default below reproduces the previous single-metric behaviour.
+
+variable "sqs_up_metric_name" {
+  description = "(optional) CloudWatch metric name for the SQS scale-up alarm. Falls back to `sqs_metric_name`."
+  default     = null
+  type        = string
+}
+
+variable "sqs_down_metric_name" {
+  description = "(optional) CloudWatch metric name for the SQS scale-down alarm. Falls back to `sqs_metric_name`. Set this to a different metric than the scale-up alarm to avoid scaling down while messages are still in flight — `ApproximateNumberOfMessagesNotVisible` or `ApproximateAgeOfOldestMessage`, for instance."
+  default     = null
+  type        = string
+}
+
+variable "sqs_up_statistic" {
+  description = "(optional) Statistic applied to the metric of the SQS scale-up alarm."
+  default     = "Sum"
+  type        = string
+  validation {
+    condition     = contains(["Sum", "Average", "Minimum", "Maximum", "SampleCount"], var.sqs_up_statistic)
+    error_message = "The sqs_up_statistic must be one of [Sum, Average, Minimum, Maximum, SampleCount]."
+  }
+}
+
+variable "sqs_down_statistic" {
+  description = "(optional) Statistic applied to the metric of the SQS scale-down alarm."
+  default     = "Sum"
+  type        = string
+  validation {
+    condition     = contains(["Sum", "Average", "Minimum", "Maximum", "SampleCount"], var.sqs_down_statistic)
+    error_message = "The sqs_down_statistic must be one of [Sum, Average, Minimum, Maximum, SampleCount]."
+  }
+}
+
+variable "sqs_up_comparison_operator" {
+  description = "(optional) How the SQS scale-up alarm compares the metric to `sqs_visible_up_threshold`."
+  default     = "GreaterThanThreshold"
+  type        = string
+  validation {
+    condition     = contains(["GreaterThanOrEqualToThreshold", "GreaterThanThreshold", "LessThanThreshold", "LessThanOrEqualToThreshold"], var.sqs_up_comparison_operator)
+    error_message = "The sqs_up_comparison_operator must be one of [GreaterThanOrEqualToThreshold, GreaterThanThreshold, LessThanThreshold, LessThanOrEqualToThreshold]."
+  }
+}
+
+variable "sqs_down_comparison_operator" {
+  description = "(optional) How the SQS scale-down alarm compares the metric to `sqs_visible_down_threshold`."
+  default     = "LessThanThreshold"
+  type        = string
+  validation {
+    condition     = contains(["GreaterThanOrEqualToThreshold", "GreaterThanThreshold", "LessThanThreshold", "LessThanOrEqualToThreshold"], var.sqs_down_comparison_operator)
+    error_message = "The sqs_down_comparison_operator must be one of [GreaterThanOrEqualToThreshold, GreaterThanThreshold, LessThanThreshold, LessThanOrEqualToThreshold]."
+  }
+}
+
+variable "sqs_up_evaluation_periods" {
+  description = "(optional) Number of periods the SQS scale-up alarm evaluates."
+  default     = 1
+  type        = number
+}
+
+variable "sqs_down_evaluation_periods" {
+  description = "(optional) Number of periods the SQS scale-down alarm evaluates. Raise this to make scale-down deliberately slower than scale-up."
+  default     = 1
+  type        = number
+}
+
+variable "sqs_up_datapoints_to_alarm" {
+  description = "(optional) Datapoints within the evaluation periods that must breach before the SQS scale-up alarm fires. Defaults to all of them."
+  default     = null
+  type        = number
+}
+
+variable "sqs_down_datapoints_to_alarm" {
+  description = "(optional) Datapoints within the evaluation periods that must breach before the SQS scale-down alarm fires. Defaults to all of them."
+  default     = null
+  type        = number
+}
+
+variable "sqs_period" {
+  description = "(optional) Period, in seconds, over which each SQS scaling alarm's metric is aggregated."
+  default     = 60
+  type        = number
 }
 
 variable "sqs_scale_up_policy_name" {
