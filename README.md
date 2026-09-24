@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.2
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.2"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.2"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -121,7 +121,7 @@ sqs_down_datapoints_to_alarm = 2
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`11.2.2`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -282,7 +282,9 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_extra_acm_arns"></a> [extra\_acm\_arns](#input\_extra\_acm\_arns) | List of additional ACM certificate ARNs to attach to the HTTPS and NLB listeners. | `list(string)` | `[]` | no |
 | <a name="input_extra_http_listener_rules"></a> [extra\_http\_listener\_rules](#input\_extra\_http\_listener\_rules) | (optional) Additional HTTP listener rules to create for ALB host-header redirects. Each rule specifies host headers to match and redirect configuration. Priority is automatically assigned after application rules. | <pre>list(object({<br/>    host_headers         = list(string)<br/>    redirect_protocol    = optional(string, "HTTP")<br/>    redirect_status_code = optional(string, "HTTP_301")<br/>    redirect_host        = string<br/>    redirect_path        = optional(string, "/")<br/>    redirect_query       = optional(string, "")<br/>  }))</pre> | `[]` | no |
 | <a name="input_extra_https_listener_rules"></a> [extra\_https\_listener\_rules](#input\_extra\_https\_listener\_rules) | (optional) Additional HTTPS listener rules to create for ALB host-header redirects. Each rule specifies host headers to match and redirect configuration. Priority is automatically assigned after application rules. | <pre>list(object({<br/>    host_headers         = list(string)<br/>    redirect_protocol    = optional(string, "HTTPS")<br/>    redirect_status_code = optional(string, "HTTP_301")<br/>    redirect_host        = string<br/>    redirect_path        = optional(string, "/")<br/>    redirect_query       = optional(string, "")<br/>  }))</pre> | `[]` | no |
+| <a name="input_extra_lb_security_group_ids"></a> [extra\_lb\_security\_group\_ids](#input\_extra\_lb\_security\_group\_ids) | (optional) List of additional security group IDs to attach to the load balancer, alongside the module-managed load balancer security group. Ignored when no load balancer is created. | `list(string)` | `[]` | no |
 | <a name="input_extra_role_policy_json"></a> [extra\_role\_policy\_json](#input\_extra\_role\_policy\_json) | (optional) Extra IAM policy to attach to role used for this task without replacing defaults | `string` | `null` | no |
+| <a name="input_extra_service_security_group_ids"></a> [extra\_service\_security\_group\_ids](#input\_extra\_service\_security\_group\_ids) | (optional) List of additional security group IDs to attach to the ECS service tasks, alongside the module-managed service security group. | `list(string)` | `[]` | no |
 | <a name="input_extra_task_execution_role_policy_json"></a> [extra\_task\_execution\_role\_policy\_json](#input\_extra\_task\_execution\_role\_policy\_json) | (optional) Extra IAM policy to attach to task execution role used for this task without replacing defaults | `string` | `null` | no |
 | <a name="input_force_new_deployment"></a> [force\_new\_deployment](#input\_force\_new\_deployment) | Enable force a new task deployment of the service. Set to true when changing launch\_type or capacity\_provider\_strategy. | `bool` | `false` | no |
 | <a name="input_health_check_grace_period_seconds"></a> [health\_check\_grace\_period\_seconds](#input\_health\_check\_grace\_period\_seconds) | Seconds to ignore failing load balancer health checks on newly instantiated tasks. | `number` | `null` | no |
