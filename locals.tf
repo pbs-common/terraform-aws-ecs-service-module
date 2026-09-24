@@ -37,7 +37,7 @@ locals {
   create_nlb_sg_access_rule            = local.create_nlb && local.create_sg_access_rule
   create_virtual_node_cidr_access_rule = length(var.virtual_node_cidr_blocks) > 0
   create_virtual_node_sg_access_rule   = local.create_sg_access_rule == true
-  lb_security_groups                   = local.create_lb ? [one(aws_security_group.lb_sg[*].id)] : null
+  lb_security_groups                   = local.create_lb ? concat([one(aws_security_group.lb_sg[*].id)], var.extra_lb_security_group_ids) : null
   container_protocol                   = var.load_balancer_type == "application" ? var.container_protocol : "TCP"
   healthcheck_protocol                 = var.healthcheck_protocol != null ? var.healthcheck_protocol : local.container_protocol
   healthcheck_matcher                  = var.load_balancer_type == "application" ? var.healthcheck_matcher : null

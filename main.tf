@@ -40,7 +40,7 @@ resource "aws_ecs_service" "service" {
 
   network_configuration {
     subnets          = var.lb_scheme == "public" && var.task_subnet_scheme == "public" ? local.public_subnets : local.private_subnets
-    security_groups  = [aws_security_group.service_sg.id]
+    security_groups  = concat([aws_security_group.service_sg.id], var.extra_service_security_group_ids)
     assign_public_ip = var.task_subnet_scheme == "public" && var.lb_scheme == "public"
   }
 
