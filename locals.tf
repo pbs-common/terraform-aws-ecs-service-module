@@ -87,6 +87,14 @@ locals {
   sqs_up_metric_name   = var.sqs_up_metric_name != null ? var.sqs_up_metric_name : var.sqs_metric_name
   sqs_down_metric_name = var.sqs_down_metric_name != null ? var.sqs_down_metric_name : var.sqs_metric_name
 
+  # Scaling variables
+  target_tracking_memory_scaling = var.scaling_approach == "target_tracking" && var.memory_count_scaling == true && var.requests_count_scaling == false
+  target_tracking_cpu_scaling    = var.scaling_approach == "target_tracking" && var.cpu_count_scaling == true && var.requests_count_scaling == false
+  step_memory_scaling_high       = var.scaling_approach == "step_scaling" && var.memory_count_scaling == true && var.requests_count_scaling == false
+  step_cpu_scaling_high          = var.scaling_approach == "step_scaling" && var.cpu_count_scaling == true && var.requests_count_scaling == false
+  step_memory_scaling_low        = var.scaling_approach == "step_scaling" && var.memory_count_scaling == true && var.requests_count_scaling == false
+  step_cpu_scaling_low           = var.scaling_approach == "step_scaling" && var.cpu_count_scaling == true && var.requests_count_scaling == false
+
   creator = "terraform"
 
   application_signals_envs = var.enable_application_signals == false ? [] : [
