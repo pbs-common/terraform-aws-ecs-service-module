@@ -65,12 +65,12 @@ variable "scaling_evaluation_periods" {
 }
 
 variable "scaling_approach" {
-  description = "Approach to take with scaling. Valid values are `target_tracking`, `step_scaling`, `sqs`, `request_count` and `none`"
+  description = "Approach to take with scaling. Valid values are `target_tracking`, `step_scaling`, `sqs`, `request_count`, `custom_metric_target_tracking`, `custom_metric_step_scaling` and `none`"
   default     = "target_tracking"
   type        = string
   validation {
-    condition     = contains(["target_tracking", "step_scaling", "sqs", "request_count", "none"], var.scaling_approach)
-    error_message = "Scaling approach must be `target_tracking`, `step_scaling`, `sqs`, `request_count` or `none`."
+    condition     = contains(["target_tracking", "step_scaling", "sqs", "request_count", "custom_metric_target_tracking", "custom_metric_step_scaling", "none"], var.scaling_approach)
+    error_message = "Scaling approach must be `target_tracking`, `step_scaling`, `sqs`, `request_count`, `custom_metric_target_tracking`, `custom_metric_step_scaling` or `none`."
   }
 }
 
@@ -796,6 +796,73 @@ variable "alb_scale_down_policy_name" {
   description = "Override name for the ALB scale-down autoscaling policy. Defaults to `$${local.name}-request-count-scale-down-policy`."
   default     = null
   type        = string
+}
+
+# ── Custom-metric based scaling (scaling_approach = "custom_metric_target_tracking" or "custom_metric_step_scaling") ────
+
+variable "custom_metric_target_tracking_scaling" {
+  description = "List of TARGET-TRACKING scaling policies driven by user-provided CloudWatch metrics (AWS auto-manages both scale-out and scale-in around a single target value). Only used when `scaling_approach` is `custom_metric_target_tracking`. Each entry creates its own aws_appautoscaling_policy."
+  type = list(object({
+    name               = string
+    namespace          = string
+    metric_name        = string
+    statistic          = optional(string, "Average")
+    unit               = optional(string)
+    dimensions         = optional(map(string), {})
+    target_value       = number
+    scale_in_cooldown  = optional(number)
+    scale_out_cooldown = optional(number)
+    disable_scale_in   = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "custom_metric_step_scaling" {
+  description = "List of step-scaling policies (distinct high/low alarms and scale up/down policies) driven by user-provided CloudWatch metrics. `scale_up` and `scale_down` each specify their own metric independently, so you can scale out on one metric and scale in on a different one. Only used when `scaling_approach` is `custom_metric_step_scaling`."
+  type = list(object({
+    name = string
+
+    scale_up = object({
+      namespace           = string
+      metric_name         = string
+      statistic           = optional(string, "Average")
+      dimensions          = optional(map(string), {})
+      period              = optional(number, 60)
+      evaluation_periods  = optional(number, 1)
+      threshold           = number
+      adjustment          = optional(number, 1)
+      cooldown            = optional(number, 60)
+      treat_missing_data  = optional(string, "missing")
+      comparison_operator = optional(string, "GreaterThanOrEqualToThreshold")
+      # Override the generated "${local.name}-${name}-high" alarm name, e.g. to match a pre-existing alarm and avoid replacement.
+      alarm_name = optional(string)
+      # Override the generated "${local.name}-${name}-scale-up-policy" policy name, e.g. to match a pre-existing policy and avoid replacement.
+      policy_name = optional(string)
+      # metric_interval_lower_bound for the single step_adjustment; default matches AWS's typical single-step convention.
+      lower_bound = optional(number, 0)
+    })
+
+    scale_down = object({
+      namespace           = string
+      metric_name         = string
+      statistic           = optional(string, "Average")
+      dimensions          = optional(map(string), {})
+      period              = optional(number, 60)
+      evaluation_periods  = optional(number, 1)
+      threshold           = number
+      adjustment          = optional(number, -1)
+      cooldown            = optional(number, 300)
+      treat_missing_data  = optional(string, "missing")
+      comparison_operator = optional(string, "LessThanOrEqualToThreshold")
+      # Override the generated "${local.name}-${name}-low" alarm name, e.g. to match a pre-existing alarm and avoid replacement.
+      alarm_name = optional(string)
+      # Override the generated "${local.name}-${name}-scale-down-policy" policy name, e.g. to match a pre-existing policy and avoid replacement.
+      policy_name = optional(string)
+      # metric_interval_upper_bound for the single step_adjustment; default matches AWS's typical single-step convention.
+      upper_bound = optional(number, 0)
+    })
+  }))
+  default = []
 }
 
 variable "extra_acm_arns" {
