@@ -803,3 +803,15 @@ variable "extra_acm_arns" {
   default     = []
   type        = list(string)
 }
+
+variable "extra_service_security_group_ids" {
+  description = "(optional) List of additional security group IDs to attach to the ECS service tasks, alongside the module-managed service security group."
+  default     = []
+  type        = list(string)
+}
+
+variable "extra_lb_security_group_ids" {
+  description = "(optional) List of additional security group IDs to attach to the load balancer, alongside the module-managed load balancer security group. Ignored when no load balancer is created."
+  default     = []
+  type        = list(string)
+}
