@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.3
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.3"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.2.3"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -121,7 +121,7 @@ sqs_down_datapoints_to_alarm = 2
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`11.2.3`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -158,6 +158,9 @@ Below is automatically generated documentation on this Terraform module using [t
 | Name | Type |
 |------|------|
 | [aws_appautoscaling_policy.cpu_autoscaling_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
+| [aws_appautoscaling_policy.custom_metric_scale_down_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
+| [aws_appautoscaling_policy.custom_metric_scale_up_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
+| [aws_appautoscaling_policy.custom_metric_target_tracking_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.memory_autoscaling_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.request_count_scale_down_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.request_count_scale_up_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
@@ -171,6 +174,8 @@ Below is automatically generated documentation on this Terraform module using [t
 | [aws_appautoscaling_target.autoscaling_target](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_target) | resource |
 | [aws_cloudwatch_metric_alarm.cpu_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.cpu_low](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
+| [aws_cloudwatch_metric_alarm.custom_metric_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
+| [aws_cloudwatch_metric_alarm.custom_metric_low](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.memory_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.memory_low](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.request_count_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
@@ -266,6 +271,8 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_create_http_listener_rules"></a> [create\_http\_listener\_rules](#input\_create\_http\_listener\_rules) | (optional) Create the application listener rules on the HTTP listener. When null, rules are created whenever the HTTP listener's default action is `fixed_response` (otherwise the listener redirects or forwards everything and rules would be unreachable). Set to false for an HTTP listener that rejects every request. | `bool` | `null` | no |
 | <a name="input_create_lb"></a> [create\_lb](#input\_create\_lb) | Create load balancer for service. If creating a virtual node, will ignore value. | `bool` | `true` | no |
 | <a name="input_custom_http_headers"></a> [custom\_http\_headers](#input\_custom\_http\_headers) | (optional) Custom HTTP headers for application load balancers. Format should be a list of maps with `name` and `value` keys. e.g. [{ name = "header1", value = "value1"}, { name = "header2", value = "value2"}] | `list(object({ name = string, value = string }))` | `[]` | no |
+| <a name="input_custom_metric_step_scaling"></a> [custom\_metric\_step\_scaling](#input\_custom\_metric\_step\_scaling) | List of step-scaling policies (distinct high/low alarms and scale up/down policies) driven by user-provided CloudWatch metrics. `scale_up` and `scale_down` each specify their own metric independently, so you can scale out on one metric and scale in on a different one. Only used when `scaling_approach` is `custom_metric_step_scaling`. | <pre>list(object({<br/>    name = string<br/><br/>    scale_up = object({<br/>      namespace           = string<br/>      metric_name         = string<br/>      statistic           = optional(string, "Average")<br/>      dimensions          = optional(map(string), {})<br/>      period              = optional(number, 60)<br/>      evaluation_periods  = optional(number, 1)<br/>      threshold           = number<br/>      adjustment          = optional(number, 1)<br/>      cooldown            = optional(number, 60)<br/>      treat_missing_data  = optional(string, "missing")<br/>      comparison_operator = optional(string, "GreaterThanOrEqualToThreshold")<br/>      # Override the generated "${local.name}-${name}-high" alarm name, e.g. to match a pre-existing alarm and avoid replacement.<br/>      alarm_name = optional(string)<br/>      # Override the generated "${local.name}-${name}-scale-up-policy" policy name, e.g. to match a pre-existing policy and avoid replacement.<br/>      policy_name = optional(string)<br/>      # metric_interval_lower_bound for the single step_adjustment; default matches AWS's typical single-step convention.<br/>      lower_bound = optional(number, 0)<br/>    })<br/><br/>    scale_down = object({<br/>      namespace           = string<br/>      metric_name         = string<br/>      statistic           = optional(string, "Average")<br/>      dimensions          = optional(map(string), {})<br/>      period              = optional(number, 60)<br/>      evaluation_periods  = optional(number, 1)<br/>      threshold           = number<br/>      adjustment          = optional(number, -1)<br/>      cooldown            = optional(number, 300)<br/>      treat_missing_data  = optional(string, "missing")<br/>      comparison_operator = optional(string, "LessThanOrEqualToThreshold")<br/>      # Override the generated "${local.name}-${name}-low" alarm name, e.g. to match a pre-existing alarm and avoid replacement.<br/>      alarm_name = optional(string)<br/>      # Override the generated "${local.name}-${name}-scale-down-policy" policy name, e.g. to match a pre-existing policy and avoid replacement.<br/>      policy_name = optional(string)<br/>      # metric_interval_upper_bound for the single step_adjustment; default matches AWS's typical single-step convention.<br/>      upper_bound = optional(number, 0)<br/>    })<br/>  }))</pre> | `[]` | no |
+| <a name="input_custom_metric_target_tracking_scaling"></a> [custom\_metric\_target\_tracking\_scaling](#input\_custom\_metric\_target\_tracking\_scaling) | List of TARGET-TRACKING scaling policies driven by user-provided CloudWatch metrics (AWS auto-manages both scale-out and scale-in around a single target value). Only used when `scaling_approach` is `custom_metric_target_tracking`. Each entry creates its own aws\_appautoscaling\_policy. | <pre>list(object({<br/>    name               = string<br/>    namespace          = string<br/>    metric_name        = string<br/>    statistic          = optional(string, "Average")<br/>    unit               = optional(string)<br/>    dimensions         = optional(map(string), {})<br/>    target_value       = number<br/>    scale_in_cooldown  = optional(number)<br/>    scale_out_cooldown = optional(number)<br/>    disable_scale_in   = optional(bool, false)<br/>  }))</pre> | `[]` | no |
 | <a name="input_custom_target_group_arns"></a> [custom\_target\_group\_arns](#input\_custom\_target\_group\_arns) | List of existing ALB target group ARNs to attach to the service instead of creating a new load balancer. | `list(string)` | `[]` | no |
 | <a name="input_deployment_maximum_percent"></a> [deployment\_maximum\_percent](#input\_deployment\_maximum\_percent) | The upper limit (as a percentage of the service's desiredCount) of the number of running tasks that can be running in a service during a deployment | `number` | `150` | no |
 | <a name="input_deployment_minimum_healthy_percent"></a> [deployment\_minimum\_healthy\_percent](#input\_deployment\_minimum\_healthy\_percent) | The lower limit (as a percentage of the service's desiredCount) of the number of running tasks that must remain running and healthy in a service during a deployment | `number` | `100` | no |
@@ -350,7 +357,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_scale_up_cpu_threshold"></a> [scale\_up\_cpu\_threshold](#input\_scale\_up\_cpu\_threshold) | Threshold at which CPU utilization triggers a scale up event | `number` | `80` | no |
 | <a name="input_scale_up_memory_threshold"></a> [scale\_up\_memory\_threshold](#input\_scale\_up\_memory\_threshold) | Threshold at which Memory utilization triggers a scale up event | `number` | `80` | no |
 | <a name="input_scale_up_requests_count_per_target"></a> [scale\_up\_requests\_count\_per\_target](#input\_scale\_up\_requests\_count\_per\_target) | Threshold at which Request count per target triggers a scale up event | `number` | `140` | no |
-| <a name="input_scaling_approach"></a> [scaling\_approach](#input\_scaling\_approach) | Approach to take with scaling. Valid values are `target_tracking`, `step_scaling`, `sqs`, `request_count` and `none` | `string` | `"target_tracking"` | no |
+| <a name="input_scaling_approach"></a> [scaling\_approach](#input\_scaling\_approach) | Approach to take with scaling. Valid values are `target_tracking`, `step_scaling`, `sqs`, `request_count`, `custom_metric_target_tracking`, `custom_metric_step_scaling` and `none` | `string` | `"target_tracking"` | no |
 | <a name="input_scaling_evaluation_period"></a> [scaling\_evaluation\_period](#input\_scaling\_evaluation\_period) | Scaling evaluation period in seconds | `number` | `60` | no |
 | <a name="input_scaling_evaluation_periods"></a> [scaling\_evaluation\_periods](#input\_scaling\_evaluation\_periods) | Number of periods over which data is compared to the threshold | `number` | `1` | no |
 | <a name="input_secrets"></a> [secrets](#input\_secrets) | (optional) secrets to be passed to the container. By default none is passed | <pre>set(object({<br/>    name      = string<br/>    valueFrom = string<br/>  }))</pre> | `[]` | no |
