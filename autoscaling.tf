@@ -101,7 +101,7 @@ resource "aws_appautoscaling_policy" "scale_down_policy" {
 
 # these two alarms are essentially an OR for scaling up - either will trigger scaling
 resource "aws_cloudwatch_metric_alarm" "cpu_high" {
-  count               = local.step_cpu_scaling_high ? 1 : 0
+  count               = local.step_cpu_scaling ? 1 : 0
   alarm_name          = "${local.name}-cpu-high"
   alarm_description   = "This alarm monitors ${local.name} CPU utilization for scaling up"
   comparison_operator = "GreaterThanOrEqualToThreshold"
@@ -125,7 +125,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "memory_high" {
-  count               = local.step_memory_scaling_high ? 1 : 0
+  count               = local.step_memory_scaling ? 1 : 0
   alarm_name          = "${local.name}-memory-high"
   alarm_description   = "This alarm monitors ${local.name} web memory utilization for scaling up"
   comparison_operator = "GreaterThanOrEqualToThreshold"
@@ -149,7 +149,7 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "cpu_low" {
-  count               = local.step_cpu_scaling_low ? 1 : 0
+  count               = local.step_cpu_scaling ? 1 : 0
   alarm_name          = "${local.name}-cpu-low"
   alarm_description   = "This alarm monitors ${local.name} web CPU utilization for scaling down"
   comparison_operator = "LessThanOrEqualToThreshold"
@@ -173,7 +173,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "memory_low" {
-  count               = local.step_memory_scaling_low ? 1 : 0
+  count               = local.step_memory_scaling ? 1 : 0
   alarm_name          = "${local.name}-memory-low"
   alarm_description   = "This alarm monitors ${local.name} web memory utilization for scaling down"
   comparison_operator = "LessThanOrEqualToThreshold"
