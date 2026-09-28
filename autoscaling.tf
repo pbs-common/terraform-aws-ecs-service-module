@@ -485,3 +485,127 @@ resource "aws_cloudwatch_metric_alarm" "request_count_low" {
     { Name = "${local.name} CW Metric Alarm ALB Requests Low" },
   )
 }
+
+# ── Custom-metric target-tracking scaling (scaling_approach = "custom_metric_target_tracking") ────
+
+# Target-tracking: AWS manages both scale-out and scale-in around a single target value for this metric.
+resource "aws_appautoscaling_policy" "custom_metric_target_tracking_policy" {
+  for_each = var.scaling_approach == "custom_metric_target_tracking" ? { for m in var.custom_metric_target_tracking_scaling : m.name => m } : {}
+
+  name               = "${local.name}-${each.value.name}-scaling-policy"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.autoscaling_target[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.autoscaling_target[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.autoscaling_target[0].service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = each.value.target_value
+    scale_in_cooldown  = each.value.scale_in_cooldown
+    scale_out_cooldown = each.value.scale_out_cooldown
+    disable_scale_in   = each.value.disable_scale_in
+
+    customized_metric_specification {
+      metric_name = each.value.metric_name
+      namespace   = each.value.namespace
+      statistic   = each.value.statistic
+      unit        = each.value.unit
+
+      dynamic "dimensions" {
+        for_each = each.value.dimensions
+        content {
+          name  = dimensions.key
+          value = dimensions.value
+        }
+      }
+    }
+  }
+}
+
+# ── Custom-metric step scaling (scaling_approach = "custom_metric_step_scaling") ───────────────────
+
+resource "aws_appautoscaling_policy" "custom_metric_scale_up_policy" {
+  for_each = var.scaling_approach == "custom_metric_step_scaling" ? { for m in var.custom_metric_step_scaling : m.name => m } : {}
+
+  name               = each.value.scale_up.policy_name != null ? each.value.scale_up.policy_name : "${local.name}-${each.value.name}-scale-up-policy"
+  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.service.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = each.value.scale_up.cooldown
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      metric_interval_lower_bound = each.value.scale_up.lower_bound
+      scaling_adjustment          = each.value.scale_up.adjustment
+    }
+  }
+}
+
+resource "aws_appautoscaling_policy" "custom_metric_scale_down_policy" {
+  for_each = var.scaling_approach == "custom_metric_step_scaling" ? { for m in var.custom_metric_step_scaling : m.name => m } : {}
+
+  name               = each.value.scale_down.policy_name != null ? each.value.scale_down.policy_name : "${local.name}-${each.value.name}-scale-down-policy"
+  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.service.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = each.value.scale_down.cooldown
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      metric_interval_upper_bound = each.value.scale_down.upper_bound
+      scaling_adjustment          = each.value.scale_down.adjustment
+    }
+  }
+}
+
+# scale-up and scale-down each watch their own independent metric, so they are not an OR pair of the same metric
+resource "aws_cloudwatch_metric_alarm" "custom_metric_high" {
+  for_each = var.scaling_approach == "custom_metric_step_scaling" ? { for m in var.custom_metric_step_scaling : m.name => m } : {}
+
+  alarm_name          = each.value.scale_up.alarm_name != null ? each.value.scale_up.alarm_name : "${local.name}-${each.value.name}-high"
+  alarm_description   = "This alarm monitors ${local.name} ${each.value.scale_up.metric_name} for scaling up"
+  comparison_operator = each.value.scale_up.comparison_operator
+  evaluation_periods  = each.value.scale_up.evaluation_periods
+  metric_name         = each.value.scale_up.metric_name
+  namespace           = each.value.scale_up.namespace
+  period              = each.value.scale_up.period
+  statistic           = each.value.scale_up.statistic
+  threshold           = each.value.scale_up.threshold
+  treat_missing_data  = each.value.scale_up.treat_missing_data
+  alarm_actions       = [aws_appautoscaling_policy.custom_metric_scale_up_policy[each.key].arn]
+
+  dimensions = each.value.scale_up.dimensions
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name} CW Metric Alarm ${each.value.name} High" },
+  )
+}
+
+resource "aws_cloudwatch_metric_alarm" "custom_metric_low" {
+  for_each = var.scaling_approach == "custom_metric_step_scaling" ? { for m in var.custom_metric_step_scaling : m.name => m } : {}
+
+  alarm_name          = each.value.scale_down.alarm_name != null ? each.value.scale_down.alarm_name : "${local.name}-${each.value.name}-low"
+  alarm_description   = "This alarm monitors ${local.name} ${each.value.scale_down.metric_name} for scaling down"
+  comparison_operator = each.value.scale_down.comparison_operator
+  evaluation_periods  = each.value.scale_down.evaluation_periods
+  metric_name         = each.value.scale_down.metric_name
+  namespace           = each.value.scale_down.namespace
+  period              = each.value.scale_down.period
+  statistic           = each.value.scale_down.statistic
+  threshold           = each.value.scale_down.threshold
+  treat_missing_data  = each.value.scale_down.treat_missing_data
+  alarm_actions       = [aws_appautoscaling_policy.custom_metric_scale_down_policy[each.key].arn]
+
+  dimensions = each.value.scale_down.dimensions
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name} CW Metric Alarm ${each.value.name} Low" },
+  )
+}
