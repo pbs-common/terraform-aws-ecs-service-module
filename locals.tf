@@ -92,7 +92,7 @@ locals {
   target_tracking_cpu_scaling    = var.scaling_approach == "target_tracking" && var.cpu_count_scaling == true && var.requests_count_scaling == false
   step_memory_scaling            = var.scaling_approach == "step_scaling" && var.memory_count_scaling == true && var.requests_count_scaling == false
   step_cpu_scaling               = var.scaling_approach == "step_scaling" && var.cpu_count_scaling == true && var.requests_count_scaling == false
-  
+
   creator = "terraform"
 
   application_signals_envs = var.enable_application_signals == false ? [] : [
