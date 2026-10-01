@@ -2,13 +2,21 @@ resource "aws_ecs_service" "service" {
   name                   = local.name
   cluster                = local.cluster
   task_definition        = local.task_def_arn
-  launch_type            = var.launch_type
+  launch_type            = local.use_capacity_provider_strategy ? null : var.launch_type
   desired_count          = local.desired_count
   enable_execute_command = local.enable_execute_command
   platform_version       = local.platform_version
 
   deployment_maximum_percent         = local.deployment_maximum_percent
   deployment_minimum_healthy_percent = var.deployment_minimum_healthy_percent
+
+  dynamic "capacity_provider_strategy" {
+    for_each = local.capacity_provider_strategy
+    content {
+      capacity_provider = capacity_provider_strategy.value.capacity_provider
+      weight            = capacity_provider_strategy.value.weight
+    }
+  }
 
   dynamic "load_balancer" {
     for_each = toset(local.create_lb ? [local.create_lb] : [])
@@ -56,11 +64,17 @@ resource "aws_ecs_service" "service" {
     ignore_changes = [
       desired_count
     ]
+
+    precondition {
+      condition     = !(local.use_capacity_provider_strategy && var.cluster == null && var.cluster_ec2_backed)
+      error_message = "fargate_weight/fargate_spot_weight cannot be combined with cluster_ec2_backed = true on the module-managed cluster: that cluster already manages its own aws_ecs_cluster_capacity_providers for its EC2 capacity provider, and this module does not extend it to also associate FARGATE/FARGATE_SPOT. Provide an existing `cluster` that already has FARGATE and FARGATE_SPOT associated instead."
+    }
   }
 
   depends_on = [
     aws_lb.lb,
-    module.task
+    module.task,
+    aws_ecs_cluster_capacity_providers.fargate_capacity_providers
   ]
 
   tags = local.tags

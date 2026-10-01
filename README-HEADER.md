@@ -69,6 +69,33 @@ module "service" {
 > How much of this applies to you is dependent on your cluster configuration and use-case, however.
 > Feel free to use the cluster provisioned by this module when starting out to reduce the friction of getting started, but consider moving to a dedicated cluster as soon as convenient.
 
+### Capacity Provider Strategy (FARGATE / FARGATE_SPOT)
+
+By default the service runs on the `launch_type` given (`FARGATE` unless overridden). To split a service across both `FARGATE` and `FARGATE_SPOT` instead, set `fargate_weight` and/or `fargate_spot_weight` — this switches the service to a `capacity_provider_strategy` and `launch_type` is ignored.
+
+```hcl
+module "service" {
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
+
+  # Required
+  hosted_zone = "example.com"
+
+  # Tagging Parameters
+  organization = var.organization
+  environment  = var.environment
+  product      = var.product
+  repo         = var.repo
+
+  # Optional
+  fargate_weight      = 1
+  fargate_spot_weight = 3
+}
+```
+
+The weights above place roughly 1 in 4 tasks on `FARGATE` and the rest on `FARGATE_SPOT`. Either weight may be omitted (or set to `0`) to run entirely on the other capacity provider while still going through `capacity_provider_strategy` rather than `launch_type` — this is the only way to run a service entirely on `FARGATE_SPOT`, since `launch_type` has no Spot value.
+
+FARGATE and FARGATE_SPOT must be associated with a cluster before a service can reference them. When this module creates the cluster (`cluster = null`) and it is not `cluster_ec2_backed`, that association is handled automatically. If you provide your own `cluster`, make sure FARGATE and FARGATE_SPOT are already associated with it. Combining `cluster_ec2_backed = true` with `fargate_weight`/`fargate_spot_weight` on a module-managed cluster is not currently supported and fails a precondition check, because the EC2-backed cluster already manages its own capacity provider association for its ASG.
+
 ### Security Groups
 
 This module creates a security group for the service's tasks, and another for the load balancer when it creates one. Each service therefore has its own security group rather than sharing one, which keeps the grant to a database or cache scoped to the single service that needs it.
