@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=11.3.0
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.3.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=11.3.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -68,6 +68,33 @@ module "service" {
 > :warning: It is not advised to use the default of the automatically created cluster from this module in production, as collocation of services on the same cluster can lead to improved resource utilization, cost savings, reduced complexity and nicer CloudWatch dashboards.
 > How much of this applies to you is dependent on your cluster configuration and use-case, however.
 > Feel free to use the cluster provisioned by this module when starting out to reduce the friction of getting started, but consider moving to a dedicated cluster as soon as convenient.
+
+### Capacity Provider Strategy (FARGATE / FARGATE\_SPOT)
+
+By default the service runs on the `launch_type` given (`FARGATE` unless overridden). To split a service across both `FARGATE` and `FARGATE_SPOT` instead, set `fargate_weight` and/or `fargate_spot_weight` — this switches the service to a `capacity_provider_strategy` and `launch_type` is ignored.
+
+```hcl
+module "service" {
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
+
+  # Required
+  hosted_zone = "example.com"
+
+  # Tagging Parameters
+  organization = var.organization
+  environment  = var.environment
+  product      = var.product
+  repo         = var.repo
+
+  # Optional
+  fargate_weight      = 1
+  fargate_spot_weight = 3
+}
+```
+
+The weights above place roughly 1 in 4 tasks on `FARGATE` and the rest on `FARGATE_SPOT`. Either weight may be omitted (or set to `0`) to run entirely on the other capacity provider while still going through `capacity_provider_strategy` rather than `launch_type` — this is the only way to run a service entirely on `FARGATE_SPOT`, since `launch_type` has no Spot value.
+
+FARGATE and FARGATE\_SPOT must be associated with a cluster before a service can reference them. When this module creates the cluster (`cluster = null`) and it is not `cluster_ec2_backed`, that association is handled automatically. If you provide your own `cluster`, make sure FARGATE and FARGATE\_SPOT are already associated with it. Combining `cluster_ec2_backed = true` with `fargate_weight`/`fargate_spot_weight` on a module-managed cluster is not currently supported and fails a precondition check, because the EC2-backed cluster already manages its own capacity provider association for its ASG.
 
 ### Security Groups
 
@@ -121,7 +148,7 @@ sqs_down_datapoints_to_alarm = 2
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`11.3.0`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -184,6 +211,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | [aws_cloudwatch_metric_alarm.requests_count_low](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.sqs_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.sqs_low](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
+| [aws_ecs_cluster_capacity_providers.fargate_capacity_providers](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_cluster_capacity_providers) | resource |
 | [aws_ecs_service.service](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_service) | resource |
 | [aws_eip.nlb](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip) | resource |
 | [aws_lb.lb](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb) | resource |
@@ -293,6 +321,8 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_extra_role_policy_json"></a> [extra\_role\_policy\_json](#input\_extra\_role\_policy\_json) | (optional) Extra IAM policy to attach to role used for this task without replacing defaults | `string` | `null` | no |
 | <a name="input_extra_service_security_group_ids"></a> [extra\_service\_security\_group\_ids](#input\_extra\_service\_security\_group\_ids) | (optional) List of additional security group IDs to attach to the ECS service tasks, alongside the module-managed service security group. | `list(string)` | `[]` | no |
 | <a name="input_extra_task_execution_role_policy_json"></a> [extra\_task\_execution\_role\_policy\_json](#input\_extra\_task\_execution\_role\_policy\_json) | (optional) Extra IAM policy to attach to task execution role used for this task without replacing defaults | `string` | `null` | no |
+| <a name="input_fargate_spot_weight"></a> [fargate\_spot\_weight](#input\_fargate\_spot\_weight) | Relative weight for the FARGATE\_SPOT capacity provider. Set together with fargate\_weight to run the service across a mix of FARGATE and FARGATE\_SPOT instead of using launch\_type. | `number` | `null` | no |
+| <a name="input_fargate_weight"></a> [fargate\_weight](#input\_fargate\_weight) | Relative weight for the FARGATE capacity provider. Set together with fargate\_spot\_weight to run the service across a mix of FARGATE and FARGATE\_SPOT instead of using launch\_type. | `number` | `null` | no |
 | <a name="input_force_new_deployment"></a> [force\_new\_deployment](#input\_force\_new\_deployment) | Enable force a new task deployment of the service. Set to true when changing launch\_type or capacity\_provider\_strategy. | `bool` | `false` | no |
 | <a name="input_health_check_grace_period_seconds"></a> [health\_check\_grace\_period\_seconds](#input\_health\_check\_grace\_period\_seconds) | Seconds to ignore failing load balancer health checks on newly instantiated tasks. | `number` | `null` | no |
 | <a name="input_healthcheck_healthy_threshold"></a> [healthcheck\_healthy\_threshold](#input\_healthcheck\_healthy\_threshold) | The number of consecutive health checks successes required before considering an unhealthy target healthy | `number` | `3` | no |

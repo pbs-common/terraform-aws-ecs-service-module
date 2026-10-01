@@ -37,3 +37,10 @@ module "cluster" {
   owner        = var.owner
   repo         = var.repo
 }
+
+resource "aws_ecs_cluster_capacity_providers" "fargate_capacity_providers" {
+  count        = local.manage_fargate_capacity_providers ? 1 : 0
+  cluster_name = module.cluster[0].name
+
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+}
