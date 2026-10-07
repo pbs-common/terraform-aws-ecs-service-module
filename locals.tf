@@ -48,10 +48,27 @@ locals {
   create_cloudmap_service              = var.namespace_id != null
   cloudmap_service_id                  = local.create_cloudmap_service ? one(aws_service_discovery_service.service[*].id) : null
   platform_version                     = var.platform_version != null ? var.platform_version : var.launch_type == "FARGATE" ? "LATEST" : null
-  extra_https_rules_count              = local.create_https_listeners ? length(var.extra_https_listener_rules) : 0
-  extra_http_rules_count               = local.create_http_fixed_response_listener ? length(var.extra_http_listener_rules) : 0
-  next_https_priority                  = var.route_priority + local.https_application_rule_count
-  next_http_priority                   = var.route_priority + local.http_application_rule_count
+
+  # A capacity_provider_strategy mixing FARGATE and FARGATE_SPOT replaces launch_type on the
+  # service entirely -- the ECS API rejects a request that sets both.
+  use_capacity_provider_strategy = var.fargate_weight != null || var.fargate_spot_weight != null
+  capacity_provider_strategy = concat(
+    var.fargate_weight != null ? [{ capacity_provider = "FARGATE", weight = var.fargate_weight }] : [],
+    var.fargate_spot_weight != null ? [{ capacity_provider = "FARGATE_SPOT", weight = var.fargate_spot_weight }] : []
+  )
+
+  # FARGATE/FARGATE_SPOT must be associated with a cluster before a service can reference them in
+  # a capacity_provider_strategy. Only self-manage that association for a cluster this module
+  # creates, and only the serverless (non ec2_backed) flavor of it -- the ec2_backed path already
+  # owns this same cluster-level resource for its own ASG capacity provider, and a second
+  # aws_ecs_cluster_capacity_providers here would fight it for the same cluster. A caller-supplied
+  # `cluster` is left alone entirely, since its capacity providers are that cluster owner's
+  # responsibility.
+  manage_fargate_capacity_providers = var.cluster == null && !var.cluster_ec2_backed && local.use_capacity_provider_strategy
+  extra_https_rules_count           = local.create_https_listeners ? length(var.extra_https_listener_rules) : 0
+  extra_http_rules_count            = local.create_http_fixed_response_listener ? length(var.extra_http_listener_rules) : 0
+  next_https_priority               = var.route_priority + local.https_application_rule_count
+  next_http_priority                = var.route_priority + local.http_application_rule_count
 
   # Security group names. A security group takes either a generated-with-suffix name or an exact
   # one, never both, so the two modes are mutually exclusive and one side is always null.

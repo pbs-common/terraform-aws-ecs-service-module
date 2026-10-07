@@ -200,6 +200,28 @@ variable "launch_type" {
   type        = string
 }
 
+variable "fargate_weight" {
+  description = "Relative weight for the FARGATE capacity provider. Set together with fargate_spot_weight to run the service across a mix of FARGATE and FARGATE_SPOT instead of using launch_type."
+  default     = null
+  type        = number
+
+  validation {
+    condition     = var.fargate_weight == null || var.fargate_weight >= 0
+    error_message = "The fargate_weight variable must be a non-negative number."
+  }
+}
+
+variable "fargate_spot_weight" {
+  description = "Relative weight for the FARGATE_SPOT capacity provider. Set together with fargate_weight to run the service across a mix of FARGATE and FARGATE_SPOT instead of using launch_type."
+  default     = null
+  type        = number
+
+  validation {
+    condition     = var.fargate_spot_weight == null || var.fargate_spot_weight >= 0
+    error_message = "The fargate_spot_weight variable must be a non-negative number."
+  }
+}
+
 variable "propagate_tags" {
   description = "Specifies whether to propagate the tags from the task definition or the service to the tasks"
   default     = "SERVICE"
