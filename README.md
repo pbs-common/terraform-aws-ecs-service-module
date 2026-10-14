@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.0
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -75,7 +75,7 @@ By default the service runs on the `launch_type` given (`FARGATE` unless overrid
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.0"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -93,6 +93,8 @@ module "service" {
 ```
 
 The weights above place roughly 1 in 4 tasks on `FARGATE` and the rest on `FARGATE_SPOT`. Either weight may be omitted (or set to `0`) to run entirely on the other capacity provider while still going through `capacity_provider_strategy` rather than `launch_type` — this is the only way to run a service entirely on `FARGATE_SPOT`, since `launch_type` has no Spot value.
+
+`fargate_base` and `fargate_spot_base` set the minimum number of tasks to place on each provider before weights are applied, and both default to `0` if not set. AWS only allows a non-zero base on one capacity provider in the strategy at a time.
 
 FARGATE and FARGATE\_SPOT must be associated with a cluster before a service can reference them. When this module creates the cluster (`cluster = null`) and it is not `cluster_ec2_backed`, that association is handled automatically. If you provide your own `cluster`, make sure FARGATE and FARGATE\_SPOT are already associated with it. Combining `cluster_ec2_backed = true` with `fargate_weight`/`fargate_spot_weight` on a module-managed cluster is not currently supported and fails a precondition check, because the EC2-backed cluster already manages its own capacity provider association for its ASG.
 
@@ -148,7 +150,7 @@ sqs_down_datapoints_to_alarm = 2
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`12.0.0`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -321,6 +323,8 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_extra_role_policy_json"></a> [extra\_role\_policy\_json](#input\_extra\_role\_policy\_json) | (optional) Extra IAM policy to attach to role used for this task without replacing defaults | `string` | `null` | no |
 | <a name="input_extra_service_security_group_ids"></a> [extra\_service\_security\_group\_ids](#input\_extra\_service\_security\_group\_ids) | (optional) List of additional security group IDs to attach to the ECS service tasks, alongside the module-managed service security group. | `list(string)` | `[]` | no |
 | <a name="input_extra_task_execution_role_policy_json"></a> [extra\_task\_execution\_role\_policy\_json](#input\_extra\_task\_execution\_role\_policy\_json) | (optional) Extra IAM policy to attach to task execution role used for this task without replacing defaults | `string` | `null` | no |
+| <a name="input_fargate_base"></a> [fargate\_base](#input\_fargate\_base) | Minimum number of tasks to run on the FARGATE capacity provider before weights are applied. Only takes effect when fargate\_weight and/or fargate\_spot\_weight is set. AWS allows a non-zero base on only one capacity provider in the strategy. | `number` | `0` | no |
+| <a name="input_fargate_spot_base"></a> [fargate\_spot\_base](#input\_fargate\_spot\_base) | Minimum number of tasks to run on the FARGATE\_SPOT capacity provider before weights are applied. Only takes effect when fargate\_weight and/or fargate\_spot\_weight is set. AWS allows a non-zero base on only one capacity provider in the strategy. | `number` | `0` | no |
 | <a name="input_fargate_spot_weight"></a> [fargate\_spot\_weight](#input\_fargate\_spot\_weight) | Relative weight for the FARGATE\_SPOT capacity provider. Set together with fargate\_weight to run the service across a mix of FARGATE and FARGATE\_SPOT instead of using launch\_type. | `number` | `null` | no |
 | <a name="input_fargate_weight"></a> [fargate\_weight](#input\_fargate\_weight) | Relative weight for the FARGATE capacity provider. Set together with fargate\_spot\_weight to run the service across a mix of FARGATE and FARGATE\_SPOT instead of using launch\_type. | `number` | `null` | no |
 | <a name="input_force_new_deployment"></a> [force\_new\_deployment](#input\_force\_new\_deployment) | Enable force a new task deployment of the service. Set to true when changing launch\_type or capacity\_provider\_strategy. | `bool` | `false` | no |

@@ -53,8 +53,8 @@ locals {
   # service entirely -- the ECS API rejects a request that sets both.
   use_capacity_provider_strategy = var.fargate_weight != null || var.fargate_spot_weight != null
   capacity_provider_strategy = concat(
-    var.fargate_weight != null ? [{ capacity_provider = "FARGATE", weight = var.fargate_weight }] : [],
-    var.fargate_spot_weight != null ? [{ capacity_provider = "FARGATE_SPOT", weight = var.fargate_spot_weight }] : []
+    var.fargate_weight != null ? [{ capacity_provider = "FARGATE", weight = var.fargate_weight, base = var.fargate_base }] : [],
+    var.fargate_spot_weight != null ? [{ capacity_provider = "FARGATE_SPOT", weight = var.fargate_spot_weight, base = var.fargate_spot_base }] : []
   )
 
   # FARGATE/FARGATE_SPOT must be associated with a cluster before a service can reference them in
