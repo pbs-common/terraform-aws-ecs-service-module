@@ -94,6 +94,8 @@ module "service" {
 
 The weights above place roughly 1 in 4 tasks on `FARGATE` and the rest on `FARGATE_SPOT`. Either weight may be omitted (or set to `0`) to run entirely on the other capacity provider while still going through `capacity_provider_strategy` rather than `launch_type` — this is the only way to run a service entirely on `FARGATE_SPOT`, since `launch_type` has no Spot value.
 
+`fargate_base` and `fargate_spot_base` set the minimum number of tasks to place on each provider before weights are applied, and both default to `0` if not set. AWS only allows a non-zero base on one capacity provider in the strategy at a time.
+
 FARGATE and FARGATE_SPOT must be associated with a cluster before a service can reference them. When this module creates the cluster (`cluster = null`) and it is not `cluster_ec2_backed`, that association is handled automatically. If you provide your own `cluster`, make sure FARGATE and FARGATE_SPOT are already associated with it. Combining `cluster_ec2_backed = true` with `fargate_weight`/`fargate_spot_weight` on a module-managed cluster is not currently supported and fails a precondition check, because the EC2-backed cluster already manages its own capacity provider association for its ASG.
 
 ### Security Groups

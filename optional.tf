@@ -222,6 +222,28 @@ variable "fargate_spot_weight" {
   }
 }
 
+variable "fargate_base" {
+  description = "Minimum number of tasks to run on the FARGATE capacity provider before weights are applied. Only takes effect when fargate_weight and/or fargate_spot_weight is set. AWS allows a non-zero base on only one capacity provider in the strategy."
+  default     = 0
+  type        = number
+
+  validation {
+    condition     = var.fargate_base >= 0
+    error_message = "The fargate_base variable must be a non-negative number."
+  }
+}
+
+variable "fargate_spot_base" {
+  description = "Minimum number of tasks to run on the FARGATE_SPOT capacity provider before weights are applied. Only takes effect when fargate_weight and/or fargate_spot_weight is set. AWS allows a non-zero base on only one capacity provider in the strategy."
+  default     = 0
+  type        = number
+
+  validation {
+    condition     = var.fargate_spot_base >= 0
+    error_message = "The fargate_spot_base variable must be a non-negative number."
+  }
+}
+
 variable "propagate_tags" {
   description = "Specifies whether to propagate the tags from the task definition or the service to the tasks"
   default     = "SERVICE"
