@@ -165,27 +165,27 @@ Below is automatically generated documentation on this Terraform module using [t
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.13.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.0.0 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | 6.67.0 |
 
 ## Modules
 
 | Name | Source | Version |
-| ---- | ------ | ------- |
+|------|--------|---------|
 | <a name="module_cluster"></a> [cluster](#module\_cluster) | github.com/pbs-common/terraform-aws-ecs-cluster-module | 2.0.0 |
 | <a name="module_task"></a> [task](#module\_task) | github.com/pbs-common/terraform-aws-ecs-task-definition-module | 3.0.2 |
 
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_appautoscaling_policy.cpu_autoscaling_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.custom_metric_scale_down_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.custom_metric_scale_up_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
@@ -257,7 +257,7 @@ Below is automatically generated documentation on this Terraform module using [t
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment (sharedtools, dev, staging, qa, prod) | `string` | n/a | yes |
 | <a name="input_organization"></a> [organization](#input\_organization) | Organization using this module. Used to prefix tags so that they are easily identified as being from your organization | `string` | n/a | yes |
 | <a name="input_owner"></a> [owner](#input\_owner) | Tag used to group resources according to product | `string` | n/a | yes |
@@ -437,7 +437,7 @@ Below is automatically generated documentation on this Terraform module using [t
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_arn"></a> [arn](#output\_arn) | ARN of the service |
 | <a name="output_cluster"></a> [cluster](#output\_cluster) | Cluster this service is associated with |
 | <a name="output_container_name"></a> [container\_name](#output\_container\_name) | Name of the main container used by this service |
