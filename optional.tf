@@ -807,13 +807,13 @@ variable "alb_target_group_arn" {
 }
 
 variable "alb_scale_up_threshold" {
-  description = "RequestCountPerTarget value that triggers a scale-up event when `scaling_approach` is `request_count`."
+  description = "Value of `alb_metric_name` that triggers a scale-up event when `scaling_approach` is `request_count`."
   default     = 140
   type        = number
 }
 
 variable "alb_scale_down_threshold" {
-  description = "RequestCountPerTarget value below which a scale-down event is triggered when `scaling_approach` is `request_count`."
+  description = "Value of `alb_metric_name` below which a scale-down event is triggered when `scaling_approach` is `request_count`."
   default     = 70
   type        = number
 }
@@ -840,6 +840,56 @@ variable "alb_scale_down_policy_name" {
   description = "Override name for the ALB scale-down autoscaling policy. Defaults to `$${local.name}-request-count-scale-down-policy`."
   default     = null
   type        = string
+}
+
+variable "alb_metric_name" {
+  description = "(optional) ALB metric the `request_count` scaling alarms watch. `RequestCountPerTarget` divides requests by the number of healthy targets, so it drops whenever tasks are added. `RequestCount` is the total number of requests the target group receives, which does not depend on how many tasks are healthy. Size `alb_scale_up_threshold` and `alb_scale_down_threshold` to the chosen metric."
+  default     = "RequestCountPerTarget"
+  type        = string
+  validation {
+    condition     = contains(["RequestCountPerTarget", "RequestCount"], var.alb_metric_name)
+    error_message = "The alb_metric_name must be one of [RequestCountPerTarget, RequestCount]."
+  }
+}
+
+variable "alb_up_datapoints_to_alarm" {
+  description = "(optional) Datapoints within `scaling_evaluation_periods` that must breach before the `request_count` scale-up alarm fires."
+  default     = 1
+  type        = number
+  validation {
+    condition     = var.alb_up_datapoints_to_alarm >= 1 && var.alb_up_datapoints_to_alarm <= var.scaling_evaluation_periods
+    error_message = "The alb_up_datapoints_to_alarm must be between 1 and scaling_evaluation_periods."
+  }
+}
+
+variable "alb_down_datapoints_to_alarm" {
+  description = "(optional) Datapoints within `scaling_evaluation_periods` that must breach before the `request_count` scale-down alarm fires."
+  default     = 1
+  type        = number
+  validation {
+    condition     = var.alb_down_datapoints_to_alarm >= 1 && var.alb_down_datapoints_to_alarm <= var.scaling_evaluation_periods
+    error_message = "The alb_down_datapoints_to_alarm must be between 1 and scaling_evaluation_periods."
+  }
+}
+
+variable "alb_up_treat_missing_data" {
+  description = "(optional) How the `request_count` scale-up alarm treats missing datapoints. The ALB publishes no request metrics for a period with no requests."
+  default     = "missing"
+  type        = string
+  validation {
+    condition     = contains(["missing", "ignore", "breaching", "notBreaching"], var.alb_up_treat_missing_data)
+    error_message = "The alb_up_treat_missing_data must be one of [missing, ignore, breaching, notBreaching]."
+  }
+}
+
+variable "alb_down_treat_missing_data" {
+  description = "(optional) How the `request_count` scale-down alarm treats missing datapoints. The ALB publishes no request metrics for a period with no requests, so set this to `breaching` to let an idle service scale down."
+  default     = "missing"
+  type        = string
+  validation {
+    condition     = contains(["missing", "ignore", "breaching", "notBreaching"], var.alb_down_treat_missing_data)
+    error_message = "The alb_down_treat_missing_data must be one of [missing, ignore, breaching, notBreaching]."
+  }
 }
 
 variable "request_count_scale_up_steps" {

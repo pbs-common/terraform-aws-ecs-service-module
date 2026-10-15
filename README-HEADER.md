@@ -190,6 +190,20 @@ additional_scale_up_alarms = [{
 
 The steps in `request_count_scale_up_steps` are measured from the threshold of whichever alarm fired, in that alarm's units. An extra alarm on a metric that runs in the thousands breaches by thousands, and so jumps straight to the last step of bounds sized for `RequestCountPerTarget`. Scale such a metric with a math expression (`"m1 / 100"`, say) so that its breaches are comparable.
 
+`RequestCountPerTarget` divides requests by the number of healthy tasks, so it drops whenever tasks are added or come up healthy. Set `alb_metric_name = "RequestCount"` to alarm on the target group's total requests instead, which does not depend on the number of healthy tasks, and size both thresholds as totals per `scaling_evaluation_period`. Adding tasks does not lower `RequestCount`. While traffic stays above `alb_scale_up_threshold`, the service keeps adding tasks every `scale_up_cooldown` until it reaches `max_capacity`, and it scales down only once traffic falls below `alb_scale_down_threshold`.
+
+Tune each alarm with `alb_up_datapoints_to_alarm` / `alb_down_datapoints_to_alarm` (out of `scaling_evaluation_periods`) and `alb_up_treat_missing_data` / `alb_down_treat_missing_data`. An ALB publishes no request metrics for a period with no requests. Set `alb_down_treat_missing_data = "breaching"` so that an idle service can still scale down:
+
+```hcl
+alb_metric_name              = "RequestCount"
+alb_scale_up_threshold       = 6000
+alb_scale_down_threshold     = 1500
+scaling_evaluation_periods   = 3
+alb_up_datapoints_to_alarm   = 1
+alb_down_datapoints_to_alarm = 3
+alb_down_treat_missing_data  = "breaching"
+```
+
 ## Adding This Version of the Module
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:

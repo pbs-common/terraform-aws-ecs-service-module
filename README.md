@@ -190,6 +190,20 @@ additional_scale_up_alarms = [{
 
 The steps in `request_count_scale_up_steps` are measured from the threshold of whichever alarm fired, in that alarm's units. An extra alarm on a metric that runs in the thousands breaches by thousands, and so jumps straight to the last step of bounds sized for `RequestCountPerTarget`. Scale such a metric with a math expression (`"m1 / 100"`, say) so that its breaches are comparable.
 
+`RequestCountPerTarget` divides requests by the number of healthy tasks, so it drops whenever tasks are added or come up healthy. Set `alb_metric_name = "RequestCount"` to alarm on the target group's total requests instead, which does not depend on the number of healthy tasks, and size both thresholds as totals per `scaling_evaluation_period`. Adding tasks does not lower `RequestCount`. While traffic stays above `alb_scale_up_threshold`, the service keeps adding tasks every `scale_up_cooldown` until it reaches `max_capacity`, and it scales down only once traffic falls below `alb_scale_down_threshold`.
+
+Tune each alarm with `alb_up_datapoints_to_alarm` / `alb_down_datapoints_to_alarm` (out of `scaling_evaluation_periods`) and `alb_up_treat_missing_data` / `alb_down_treat_missing_data`. An ALB publishes no request metrics for a period with no requests. Set `alb_down_treat_missing_data = "breaching"` so that an idle service can still scale down:
+
+```hcl
+alb_metric_name              = "RequestCount"
+alb_scale_up_threshold       = 6000
+alb_scale_down_threshold     = 1500
+scaling_evaluation_periods   = 3
+alb_up_datapoints_to_alarm   = 1
+alb_down_datapoints_to_alarm = 3
+alb_down_treat_missing_data  = "breaching"
+```
+
 ## Adding This Version of the Module
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
@@ -313,12 +327,17 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_alb_alarm_high_name"></a> [alb\_alarm\_high\_name](#input\_alb\_alarm\_high\_name) | Override name for the ALB scale-up CloudWatch alarm. Defaults to `${local.name}-request-count-high`. | `string` | `null` | no |
 | <a name="input_alb_alarm_low_name"></a> [alb\_alarm\_low\_name](#input\_alb\_alarm\_low\_name) | Override name for the ALB scale-down CloudWatch alarm. Defaults to `${local.name}-request-count-low`. | `string` | `null` | no |
 | <a name="input_alb_arn"></a> [alb\_arn](#input\_alb\_arn) | ARN of the ALB used for ALB-based scaling. Required when `scaling_approach` is `request_count` and `create_lb` is false. When `create_lb` is true the module's own ALB is used automatically. | `string` | `null` | no |
+| <a name="input_alb_down_datapoints_to_alarm"></a> [alb\_down\_datapoints\_to\_alarm](#input\_alb\_down\_datapoints\_to\_alarm) | (optional) Datapoints within `scaling_evaluation_periods` that must breach before the `request_count` scale-down alarm fires. | `number` | `1` | no |
+| <a name="input_alb_down_treat_missing_data"></a> [alb\_down\_treat\_missing\_data](#input\_alb\_down\_treat\_missing\_data) | (optional) How the `request_count` scale-down alarm treats missing datapoints. The ALB publishes no request metrics for a period with no requests, so set this to `breaching` to let an idle service scale down. | `string` | `"missing"` | no |
+| <a name="input_alb_metric_name"></a> [alb\_metric\_name](#input\_alb\_metric\_name) | (optional) ALB metric the `request_count` scaling alarms watch. `RequestCountPerTarget` divides requests by the number of healthy targets, so it drops whenever tasks are added. `RequestCount` is the total number of requests the target group receives, which does not depend on how many tasks are healthy. Size `alb_scale_up_threshold` and `alb_scale_down_threshold` to the chosen metric. | `string` | `"RequestCountPerTarget"` | no |
 | <a name="input_alb_scale_down_policy_name"></a> [alb\_scale\_down\_policy\_name](#input\_alb\_scale\_down\_policy\_name) | Override name for the ALB scale-down autoscaling policy. Defaults to `${local.name}-request-count-scale-down-policy`. | `string` | `null` | no |
-| <a name="input_alb_scale_down_threshold"></a> [alb\_scale\_down\_threshold](#input\_alb\_scale\_down\_threshold) | RequestCountPerTarget value below which a scale-down event is triggered when `scaling_approach` is `request_count`. | `number` | `70` | no |
+| <a name="input_alb_scale_down_threshold"></a> [alb\_scale\_down\_threshold](#input\_alb\_scale\_down\_threshold) | Value of `alb_metric_name` below which a scale-down event is triggered when `scaling_approach` is `request_count`. | `number` | `70` | no |
 | <a name="input_alb_scale_up_policy_name"></a> [alb\_scale\_up\_policy\_name](#input\_alb\_scale\_up\_policy\_name) | Override name for the ALB scale-up autoscaling policy. Defaults to `${local.name}-request-count-scale-up-policy`. | `string` | `null` | no |
-| <a name="input_alb_scale_up_threshold"></a> [alb\_scale\_up\_threshold](#input\_alb\_scale\_up\_threshold) | RequestCountPerTarget value that triggers a scale-up event when `scaling_approach` is `request_count`. | `number` | `140` | no |
+| <a name="input_alb_scale_up_threshold"></a> [alb\_scale\_up\_threshold](#input\_alb\_scale\_up\_threshold) | Value of `alb_metric_name` that triggers a scale-up event when `scaling_approach` is `request_count`. | `number` | `140` | no |
 | <a name="input_alb_ssl_policy"></a> [alb\_ssl\_policy](#input\_alb\_ssl\_policy) | SSL policy to use for an Application Load Balancer application. | `string` | `"ELBSecurityPolicy-TLS13-1-2-2021-06"` | no |
 | <a name="input_alb_target_group_arn"></a> [alb\_target\_group\_arn](#input\_alb\_target\_group\_arn) | ARN of the ALB target group used for ALB-based scaling. Required when `scaling_approach` is `request_count` and `create_lb` is false. When `create_lb` is true the module's own target group is used automatically. | `string` | `null` | no |
+| <a name="input_alb_up_datapoints_to_alarm"></a> [alb\_up\_datapoints\_to\_alarm](#input\_alb\_up\_datapoints\_to\_alarm) | (optional) Datapoints within `scaling_evaluation_periods` that must breach before the `request_count` scale-up alarm fires. | `number` | `1` | no |
+| <a name="input_alb_up_treat_missing_data"></a> [alb\_up\_treat\_missing\_data](#input\_alb\_up\_treat\_missing\_data) | (optional) How the `request_count` scale-up alarm treats missing datapoints. The ALB publishes no request metrics for a period with no requests. | `string` | `"missing"` | no |
 | <a name="input_aliases"></a> [aliases](#input\_aliases) | CNAME(s) that are allowed to be used for this service. Default is `product`.`hosted_zone`. e.g. [product.example.com] --> [product.example.com] | `list(string)` | `null` | no |
 | <a name="input_alpn_policy"></a> [alpn\_policy](#input\_alpn\_policy) | Name of the Application-Layer Protocol Negotiation (ALPN) policy. Can be set if protocol is TLS. Valid values are HTTP1Only, HTTP2Only, HTTP2Optional, HTTP2Preferred, and None. | `string` | `"HTTP2Preferred"` | no |
 | <a name="input_awslogs_driver_mode"></a> [awslogs\_driver\_mode](#input\_awslogs\_driver\_mode) | (optional) awslogs driver mode. Set this to `blocking` if you would rather have an outage than lose logs. | `string` | `"non-blocking"` | no |

@@ -439,15 +439,16 @@ resource "aws_appautoscaling_policy" "request_count_scale_down_policy" {
 resource "aws_cloudwatch_metric_alarm" "request_count_high" {
   count               = var.scaling_approach == "request_count" ? 1 : 0
   alarm_name          = var.alb_alarm_high_name != null ? var.alb_alarm_high_name : "${local.name}-request-count-high"
-  alarm_description   = "Scale up ${local.name} based on ALB RequestCountPerTarget"
+  alarm_description   = "Scale up ${local.name} based on ALB ${var.alb_metric_name}"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = var.scaling_evaluation_periods
-  metric_name         = "RequestCountPerTarget"
+  metric_name         = var.alb_metric_name
   namespace           = "AWS/ApplicationELB"
   period              = var.scaling_evaluation_period
   statistic           = "Sum"
   threshold           = var.alb_scale_up_threshold
-  datapoints_to_alarm = 1
+  datapoints_to_alarm = var.alb_up_datapoints_to_alarm
+  treat_missing_data  = var.alb_up_treat_missing_data
 
   dimensions = {
     TargetGroup  = replace(local.alb_scaling_tg_arn, "/arn:.*?:targetgroup\\/(.*)/", "targetgroup/$1")
@@ -466,15 +467,16 @@ resource "aws_cloudwatch_metric_alarm" "request_count_high" {
 resource "aws_cloudwatch_metric_alarm" "request_count_low" {
   count               = var.scaling_approach == "request_count" ? 1 : 0
   alarm_name          = var.alb_alarm_low_name != null ? var.alb_alarm_low_name : "${local.name}-request-count-low"
-  alarm_description   = "Scale down ${local.name} based on ALB RequestCountPerTarget"
+  alarm_description   = "Scale down ${local.name} based on ALB ${var.alb_metric_name}"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = var.scaling_evaluation_periods
-  metric_name         = "RequestCountPerTarget"
+  metric_name         = var.alb_metric_name
   namespace           = "AWS/ApplicationELB"
   period              = var.scaling_evaluation_period
   statistic           = "Sum"
   threshold           = var.alb_scale_down_threshold
-  datapoints_to_alarm = 1
+  datapoints_to_alarm = var.alb_down_datapoints_to_alarm
+  treat_missing_data  = var.alb_down_treat_missing_data
 
   dimensions = {
     TargetGroup  = replace(local.alb_scaling_tg_arn, "/arn:.*?:targetgroup\\/(.*)/", "targetgroup/$1")
