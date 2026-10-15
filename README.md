@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -75,7 +75,7 @@ By default the service runs on the `launch_type` given (`FARGATE` unless overrid
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -146,11 +146,30 @@ sqs_down_evaluation_periods  = 2
 sqs_down_datapoints_to_alarm = 2
 ```
 
+### Request Count Scaling
+
+With `scaling_approach = "request_count"`, the service scales on ALB request metrics through step scaling: a high alarm at `alb_scale_up_threshold` and a low alarm at `alb_scale_down_threshold`.
+
+By default every scale-up adds `scale_up_adjustment` tasks, however large the breach. Set `request_count_scale_up_steps` to add more tasks for a bigger breach. Bounds are offsets from the threshold in the metric's own units, not percentages. Steps must start at `0`, be contiguous, and leave `upper_bound` unset on the last one. With the default threshold of 140, this adds 1 task up to 50% over the threshold, 2 tasks up to 100% over, and 4 tasks beyond that:
+
+```hcl
+scaling_approach       = "request_count"
+alb_scale_up_threshold = 140
+
+request_count_scale_up_steps = [
+  { lower_bound = 0, upper_bound = 70, adjustment = 1 },
+  { lower_bound = 70, upper_bound = 140, adjustment = 2 },
+  { lower_bound = 140, adjustment = 4 },
+]
+```
+
+Size adjustments to the service's normal task count: a step that doubles a 2-task service is a modest jump for a 20-task one. However large a step is, the service never grows beyond `max_capacity`.
+
 ## Adding This Version of the Module
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`12.0.1`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -173,7 +192,7 @@ Below is automatically generated documentation on this Terraform module using [t
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.67.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.69.0 |
 
 ## Modules
 
@@ -374,6 +393,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_propagate_tags"></a> [propagate\_tags](#input\_propagate\_tags) | Specifies whether to propagate the tags from the task definition or the service to the tasks | `string` | `"SERVICE"` | no |
 | <a name="input_public_subnets"></a> [public\_subnets](#input\_public\_subnets) | Public subnets for the service. If null, public subnets will be looked up based on environment tag. | `list(string)` | `null` | no |
 | <a name="input_pythonpath"></a> [pythonpath](#input\_pythonpath) | (optional) PYTHONPATH of the application; required by the cwagent sidecar container | `string` | `":"` | no |
+| <a name="input_request_count_scale_up_steps"></a> [request\_count\_scale\_up\_steps](#input\_request\_count\_scale\_up\_steps) | (optional) Step adjustments for the `request_count` scale-up policy, so a bigger breach adds more tasks. Bounds are offsets from the threshold of the alarm that fired, in that alarm's metric units, not percentages. Steps must be in ascending order, start at `lower_bound = 0`, be contiguous, and the last one must leave `upper_bound` unset. Adjustments must be positive. Defaults to one step adding `scale_up_adjustment` tasks. | <pre>list(object({<br/>    lower_bound = number<br/>    upper_bound = optional(number)<br/>    adjustment  = number<br/>  }))</pre> | `null` | no |
 | <a name="input_requests_count_scaling"></a> [requests\_count\_scaling](#input\_requests\_count\_scaling) | Use RequestCountPerTarget CloudWatch metric for scaling | `bool` | `false` | no |
 | <a name="input_requires_compatibilities"></a> [requires\_compatibilities](#input\_requires\_compatibilities) | (optional) capabilities that the task requires | `set(string)` | <pre>[<br/>  "FARGATE"<br/>]</pre> | no |
 | <a name="input_restricted_sg"></a> [restricted\_sg](#input\_restricted\_sg) | SG to receive restricted service access. If null, no sg will be configured to connect | `string` | `null` | no |

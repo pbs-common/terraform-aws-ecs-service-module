@@ -842,6 +842,45 @@ variable "alb_scale_down_policy_name" {
   type        = string
 }
 
+variable "request_count_scale_up_steps" {
+  description = "(optional) Step adjustments for the `request_count` scale-up policy, so a bigger breach adds more tasks. Bounds are offsets from the threshold of the alarm that fired, in that alarm's metric units, not percentages. Steps must be in ascending order, start at `lower_bound = 0`, be contiguous, and the last one must leave `upper_bound` unset. Adjustments must be positive. Defaults to one step adding `scale_up_adjustment` tasks."
+  default     = null
+  type = list(object({
+    lower_bound = number
+    upper_bound = optional(number)
+    adjustment  = number
+  }))
+  validation {
+    condition     = var.request_count_scale_up_steps == null ? true : length(var.request_count_scale_up_steps) > 0
+    error_message = "The request_count_scale_up_steps must contain at least one step when set."
+  }
+  validation {
+    condition     = var.request_count_scale_up_steps == null ? true : length(var.request_count_scale_up_steps) == 0 ? true : var.request_count_scale_up_steps[0].lower_bound == 0
+    error_message = "The first of request_count_scale_up_steps must have lower_bound = 0, or a breach smaller than that bound adds no tasks."
+  }
+  validation {
+    condition = var.request_count_scale_up_steps == null ? true : alltrue([
+      for i in range(max(length(var.request_count_scale_up_steps) - 1, 0)) :
+      var.request_count_scale_up_steps[i].upper_bound == null ? false : var.request_count_scale_up_steps[i].upper_bound == var.request_count_scale_up_steps[i + 1].lower_bound
+    ])
+    error_message = "The request_count_scale_up_steps must be contiguous: each step's upper_bound must equal the next step's lower_bound."
+  }
+  validation {
+    condition     = var.request_count_scale_up_steps == null ? true : length(var.request_count_scale_up_steps) == 0 ? true : var.request_count_scale_up_steps[length(var.request_count_scale_up_steps) - 1].upper_bound == null
+    error_message = "The last of request_count_scale_up_steps must leave upper_bound unset, or a breach above it adds no tasks."
+  }
+  validation {
+    condition = var.request_count_scale_up_steps == null ? true : alltrue([
+      for s in var.request_count_scale_up_steps : s.upper_bound == null ? true : s.upper_bound > s.lower_bound
+    ])
+    error_message = "Each of request_count_scale_up_steps must have upper_bound greater than lower_bound."
+  }
+  validation {
+    condition     = var.request_count_scale_up_steps == null ? true : alltrue([for s in var.request_count_scale_up_steps : s.adjustment > 0])
+    error_message = "Each of request_count_scale_up_steps must have a positive adjustment."
+  }
+}
+
 # ── Custom-metric based scaling (scaling_approach = "custom_metric_target_tracking" or "custom_metric_step_scaling") ────
 
 variable "custom_metric_target_tracking_scaling" {

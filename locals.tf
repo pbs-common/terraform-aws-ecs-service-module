@@ -190,6 +190,11 @@ locals {
   # ALB scaling: prefer explicit vars; fall back to the module's own LB/TG when create_lb = true
   alb_scaling_arn    = var.alb_arn != null ? var.alb_arn : try(aws_lb.lb[0].arn, "")
   alb_scaling_tg_arn = var.alb_target_group_arn != null ? var.alb_target_group_arn : try(aws_lb_target_group.target_group[0].arn, "")
+
+  # Without explicit steps, the request_count scale-up policy keeps its single step of scale_up_adjustment tasks.
+  request_count_scale_up_steps = var.request_count_scale_up_steps != null ? var.request_count_scale_up_steps : [
+    { lower_bound = 0, upper_bound = null, adjustment = var.scale_up_adjustment }
+  ]
 }
 
 data "aws_default_tags" "common_tags" {}
