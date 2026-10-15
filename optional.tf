@@ -893,13 +893,17 @@ variable "alb_down_treat_missing_data" {
 }
 
 variable "request_count_scale_up_steps" {
-  description = "(optional) Step adjustments for the `request_count` scale-up policy, so a bigger breach adds more tasks. Bounds are offsets from the threshold of the alarm that fired, in that alarm's metric units, not percentages. Steps must be in ascending order, start at `lower_bound = 0`, be contiguous, and the last one must leave `upper_bound` unset. Adjustments must be positive. Defaults to one step adding `scale_up_adjustment` tasks."
+  description = "(optional) Step adjustments for the `request_count` scale-up policy, so a bigger breach adds more tasks. Bounds are offsets from the threshold of the alarm that fired, in that alarm's metric units, not percentages. Steps must be in ascending order, start at `lower_bound = 0`, be contiguous, and the last one must leave `upper_bound` unset. Adjustments must be positive. Defaults to one step adding `scale_up_adjustment` tasks. Only used when `scaling_approach` is `request_count`."
   default     = null
   type = list(object({
     lower_bound = number
     upper_bound = optional(number)
     adjustment  = number
   }))
+  validation {
+    condition     = var.request_count_scale_up_steps == null || var.scaling_approach == "request_count"
+    error_message = "The request_count_scale_up_steps are only used when scaling_approach is request_count."
+  }
   validation {
     condition     = var.request_count_scale_up_steps == null ? true : length(var.request_count_scale_up_steps) > 0
     error_message = "The request_count_scale_up_steps must contain at least one step when set."

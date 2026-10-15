@@ -128,6 +128,15 @@ run "step_bounds_must_ascend" {
   expect_failures = [var.request_count_scale_up_steps]
 }
 
+run "steps_require_request_count_approach" {
+  command = plan
+  variables {
+    scaling_approach             = "step_scaling"
+    request_count_scale_up_steps = [{ lower_bound = 0, adjustment = 2 }]
+  }
+  expect_failures = [var.request_count_scale_up_steps]
+}
+
 # ── Additional scale-up alarms ───────────────────────────────────────────────
 
 run "no_additional_alarms_by_default" {
@@ -208,6 +217,10 @@ run "additional_alarm_with_math_expression" {
   assert {
     condition     = length(aws_cloudwatch_metric_alarm.additional_scale_up["ratio"].metric_query) == 2
     error_message = "Extra alarm must render every metric query, including expressions."
+  }
+  assert {
+    condition     = { for q in aws_cloudwatch_metric_alarm.additional_scale_up["ratio"].metric_query : q.id => length(q.metric) } == { up = 1, ratio = 0 }
+    error_message = "An expression query must render without a metric block; a metric query must render exactly one."
   }
 }
 
