@@ -881,6 +881,61 @@ variable "request_count_scale_up_steps" {
   }
 }
 
+variable "additional_scale_up_alarms" {
+  description = "(optional) Extra CloudWatch alarms that trigger the `request_count` scale-up policy, alongside the alarm on `alb_metric_name`. Any one of them firing scales the service up, so they can make it scale up earlier but never later. Each alarm watches the `metric_queries` given, exactly one of which must return data, and is named `<name>-<alarm name>-scale-up`. Steps in `request_count_scale_up_steps` are measured from the threshold of whichever alarm fired. Only used when `scaling_approach` is `request_count`."
+  default     = []
+  type = list(object({
+    name                = string
+    threshold           = number
+    evaluation_periods  = optional(number, 1)
+    datapoints_to_alarm = optional(number)
+    comparison_operator = optional(string, "GreaterThanOrEqualToThreshold")
+    treat_missing_data  = optional(string, "missing")
+    metric_queries = list(object({
+      id          = string
+      expression  = optional(string)
+      label       = optional(string)
+      return_data = optional(bool, false)
+      metric = optional(object({
+        namespace   = string
+        metric_name = string
+        period      = optional(number, 60)
+        stat        = optional(string, "Sum")
+        unit        = optional(string)
+        dimensions  = optional(map(string), {})
+      }))
+    }))
+  }))
+  validation {
+    condition     = length(var.additional_scale_up_alarms) == 0 || var.scaling_approach == "request_count"
+    error_message = "The additional_scale_up_alarms are only used when scaling_approach is request_count."
+  }
+  validation {
+    condition     = length(distinct([for a in var.additional_scale_up_alarms : a.name])) == length(var.additional_scale_up_alarms)
+    error_message = "Each of additional_scale_up_alarms must have a unique name."
+  }
+  validation {
+    condition     = alltrue([for a in var.additional_scale_up_alarms : length([for q in a.metric_queries : q if q.return_data]) == 1])
+    error_message = "Each of additional_scale_up_alarms must have exactly one metric query with return_data = true."
+  }
+  validation {
+    condition     = alltrue(flatten([for a in var.additional_scale_up_alarms : [for q in a.metric_queries : (q.expression == null) != (q.metric == null)]]))
+    error_message = "Each metric query in additional_scale_up_alarms must set exactly one of expression or metric."
+  }
+  validation {
+    condition     = alltrue([for a in var.additional_scale_up_alarms : a.datapoints_to_alarm == null ? true : a.datapoints_to_alarm >= 1 && a.datapoints_to_alarm <= a.evaluation_periods])
+    error_message = "Each of additional_scale_up_alarms must have datapoints_to_alarm between 1 and its evaluation_periods."
+  }
+  validation {
+    condition     = alltrue([for a in var.additional_scale_up_alarms : contains(["GreaterThanOrEqualToThreshold", "GreaterThanThreshold"], a.comparison_operator)])
+    error_message = "Each of additional_scale_up_alarms must use comparison_operator GreaterThanOrEqualToThreshold or GreaterThanThreshold."
+  }
+  validation {
+    condition     = alltrue([for a in var.additional_scale_up_alarms : contains(["missing", "ignore", "breaching", "notBreaching"], a.treat_missing_data)])
+    error_message = "Each of additional_scale_up_alarms must have treat_missing_data one of [missing, ignore, breaching, notBreaching]."
+  }
+}
+
 # ── Custom-metric based scaling (scaling_approach = "custom_metric_target_tracking" or "custom_metric_step_scaling") ────
 
 variable "custom_metric_target_tracking_scaling" {

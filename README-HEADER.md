@@ -165,6 +165,31 @@ request_count_scale_up_steps = [
 
 Size adjustments to the service's normal task count: a step that doubles a 2-task service is a modest jump for a 20-task one. However large a step is, the service never grows beyond `max_capacity`.
 
+`RequestCountPerTarget` only rises once traffic reaches this service. To scale up earlier, for instance when an upstream service starts receiving more traffic, add alarms with `additional_scale_up_alarms`. Each one triggers the same scale-up policy as the request-count alarm. Any alarm firing scales the service up, so extra alarms can make it scale up earlier but never later. Each alarm takes CloudWatch `metric_queries`, metrics or math expressions, and exactly one of them must set `return_data = true`:
+
+```hcl
+additional_scale_up_alarms = [{
+  name                = "upstream"
+  threshold           = 5000
+  evaluation_periods  = 2
+  datapoints_to_alarm = 1
+  metric_queries = [{
+    id          = "upstream_requests"
+    return_data = true
+    metric = {
+      namespace   = "AWS/ApplicationELB"
+      metric_name = "RequestCount"
+      dimensions = {
+        LoadBalancer = "app/upstream-alb/1111111111111111"
+        TargetGroup  = "targetgroup/upstream-tg/2222222222222222"
+      }
+    }
+  }]
+}]
+```
+
+The steps in `request_count_scale_up_steps` are measured from the threshold of whichever alarm fired, in that alarm's units. An extra alarm on a metric that runs in the thousands breaches by thousands, and so jumps straight to the last step of bounds sized for `RequestCountPerTarget`. Scale such a metric with a math expression (`"m1 / 100"`, say) so that its breaches are comparable.
+
 ## Adding This Version of the Module
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:

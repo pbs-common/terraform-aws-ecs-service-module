@@ -165,6 +165,31 @@ request_count_scale_up_steps = [
 
 Size adjustments to the service's normal task count: a step that doubles a 2-task service is a modest jump for a 20-task one. However large a step is, the service never grows beyond `max_capacity`.
 
+`RequestCountPerTarget` only rises once traffic reaches this service. To scale up earlier, for instance when an upstream service starts receiving more traffic, add alarms with `additional_scale_up_alarms`. Each one triggers the same scale-up policy as the request-count alarm. Any alarm firing scales the service up, so extra alarms can make it scale up earlier but never later. Each alarm takes CloudWatch `metric_queries`, metrics or math expressions, and exactly one of them must set `return_data = true`:
+
+```hcl
+additional_scale_up_alarms = [{
+  name                = "upstream"
+  threshold           = 5000
+  evaluation_periods  = 2
+  datapoints_to_alarm = 1
+  metric_queries = [{
+    id          = "upstream_requests"
+    return_data = true
+    metric = {
+      namespace   = "AWS/ApplicationELB"
+      metric_name = "RequestCount"
+      dimensions = {
+        LoadBalancer = "app/upstream-alb/1111111111111111"
+        TargetGroup  = "targetgroup/upstream-tg/2222222222222222"
+      }
+    }
+  }]
+}]
+```
+
+The steps in `request_count_scale_up_steps` are measured from the threshold of whichever alarm fired, in that alarm's units. An extra alarm on a metric that runs in the thousands breaches by thousands, and so jumps straight to the last step of bounds sized for `RequestCountPerTarget`. Scale such a metric with a math expression (`"m1 / 100"`, say) so that its breaches are comparable.
+
 ## Adding This Version of the Module
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
@@ -220,6 +245,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | [aws_appautoscaling_policy.sqs_scale_down_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.sqs_scale_up_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_target.autoscaling_target](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_target) | resource |
+| [aws_cloudwatch_metric_alarm.additional_scale_up](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.cpu_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.cpu_low](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.custom_metric_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
@@ -283,6 +309,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_product"></a> [product](#input\_product) | Tag used to group resources according to product | `string` | n/a | yes |
 | <a name="input_repo"></a> [repo](#input\_repo) | Tag used to point to the repo using this module | `string` | n/a | yes |
 | <a name="input_acm_arn"></a> [acm\_arn](#input\_acm\_arn) | ARN of the ACM certificate to use for the service. If null, one will be guessed based on the primary hosted zone of the service. | `string` | `null` | no |
+| <a name="input_additional_scale_up_alarms"></a> [additional\_scale\_up\_alarms](#input\_additional\_scale\_up\_alarms) | (optional) Extra CloudWatch alarms that trigger the `request_count` scale-up policy, alongside the alarm on `alb_metric_name`. Any one of them firing scales the service up, so they can make it scale up earlier but never later. Each alarm watches the `metric_queries` given, exactly one of which must return data, and is named `<name>-<alarm name>-scale-up`. Steps in `request_count_scale_up_steps` are measured from the threshold of whichever alarm fired. Only used when `scaling_approach` is `request_count`. | <pre>list(object({<br/>    name                = string<br/>    threshold           = number<br/>    evaluation_periods  = optional(number, 1)<br/>    datapoints_to_alarm = optional(number)<br/>    comparison_operator = optional(string, "GreaterThanOrEqualToThreshold")<br/>    treat_missing_data  = optional(string, "missing")<br/>    metric_queries = list(object({<br/>      id          = string<br/>      expression  = optional(string)<br/>      label       = optional(string)<br/>      return_data = optional(bool, false)<br/>      metric = optional(object({<br/>        namespace   = string<br/>        metric_name = string<br/>        period      = optional(number, 60)<br/>        stat        = optional(string, "Sum")<br/>        unit        = optional(string)<br/>        dimensions  = optional(map(string), {})<br/>      }))<br/>    }))<br/>  }))</pre> | `[]` | no |
 | <a name="input_alb_alarm_high_name"></a> [alb\_alarm\_high\_name](#input\_alb\_alarm\_high\_name) | Override name for the ALB scale-up CloudWatch alarm. Defaults to `${local.name}-request-count-high`. | `string` | `null` | no |
 | <a name="input_alb_alarm_low_name"></a> [alb\_alarm\_low\_name](#input\_alb\_alarm\_low\_name) | Override name for the ALB scale-down CloudWatch alarm. Defaults to `${local.name}-request-count-low`. | `string` | `null` | no |
 | <a name="input_alb_arn"></a> [alb\_arn](#input\_alb\_arn) | ARN of the ALB used for ALB-based scaling. Required when `scaling_approach` is `request_count` and `create_lb` is false. When `create_lb` is true the module's own ALB is used automatically. | `string` | `null` | no |

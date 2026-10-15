@@ -127,3 +127,149 @@ run "step_bounds_must_ascend" {
   }
   expect_failures = [var.request_count_scale_up_steps]
 }
+
+# ── Additional scale-up alarms ───────────────────────────────────────────────
+
+run "no_additional_alarms_by_default" {
+  command = plan
+  assert {
+    condition     = length(aws_cloudwatch_metric_alarm.additional_scale_up) == 0
+    error_message = "No extra scale-up alarms may be created by default."
+  }
+}
+
+run "additional_alarm_triggers_request_count_scale_up_policy" {
+  command = plan
+
+  variables {
+    additional_scale_up_alarms = [{
+      name                = "upstream"
+      threshold           = 5000
+      evaluation_periods  = 2
+      datapoints_to_alarm = 1
+      metric_queries = [{
+        id          = "upstream_requests"
+        return_data = true
+        metric = {
+          namespace   = "AWS/ApplicationELB"
+          metric_name = "RequestCount"
+          dimensions = {
+            LoadBalancer = "app/upstream-alb/1111111111111111"
+            TargetGroup  = "targetgroup/upstream-tg/2222222222222222"
+          }
+        }
+      }]
+    }]
+  }
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.additional_scale_up["upstream"].alarm_name == "tftest-svc-upstream-scale-up"
+    error_message = "Extra alarm must be named <name>-<alarm name>-scale-up."
+  }
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.additional_scale_up["upstream"].alarm_actions == toset(["arn:aws:autoscaling:us-east-1:123456789012:scalingPolicy:scale-up"])
+    error_message = "Extra alarm must trigger the request_count scale-up policy."
+  }
+  assert {
+    condition     = [for q in aws_cloudwatch_metric_alarm.additional_scale_up["upstream"].metric_query : q.metric[0].metric_name] == ["RequestCount"]
+    error_message = "Extra alarm must render its metric_queries."
+  }
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.additional_scale_up["upstream"].datapoints_to_alarm == 1 && aws_cloudwatch_metric_alarm.additional_scale_up["upstream"].evaluation_periods == 2
+    error_message = "Extra alarm must use its own evaluation_periods and datapoints_to_alarm."
+  }
+  assert {
+    condition     = length(aws_cloudwatch_metric_alarm.request_count_high) == 1
+    error_message = "The per-task alarm must stay in place alongside extra alarms."
+  }
+}
+
+run "additional_alarm_with_math_expression" {
+  command = plan
+
+  variables {
+    additional_scale_up_alarms = [{
+      name      = "ratio"
+      threshold = 2
+      metric_queries = [
+        {
+          id = "up"
+          metric = {
+            namespace   = "AWS/ApplicationELB"
+            metric_name = "RequestCount"
+            dimensions  = { LoadBalancer = "app/upstream-alb/1111111111111111" }
+          }
+        },
+        { id = "ratio", expression = "up / 1000", label = "Upstream kRPM", return_data = true },
+      ]
+    }]
+  }
+
+  assert {
+    condition     = length(aws_cloudwatch_metric_alarm.additional_scale_up["ratio"].metric_query) == 2
+    error_message = "Extra alarm must render every metric query, including expressions."
+  }
+}
+
+run "additional_alarms_need_one_returning_query" {
+  command = plan
+  variables {
+    additional_scale_up_alarms = [{
+      name      = "upstream"
+      threshold = 5000
+      metric_queries = [{
+        id     = "q"
+        metric = { namespace = "AWS/ApplicationELB", metric_name = "RequestCount" }
+      }]
+    }]
+  }
+  expect_failures = [var.additional_scale_up_alarms]
+}
+
+run "additional_alarm_query_needs_expression_xor_metric" {
+  command = plan
+  variables {
+    additional_scale_up_alarms = [{
+      name           = "upstream"
+      threshold      = 5000
+      metric_queries = [{ id = "q", return_data = true }]
+    }]
+  }
+  expect_failures = [var.additional_scale_up_alarms]
+}
+
+run "additional_alarm_names_must_be_unique" {
+  command = plan
+  variables {
+    additional_scale_up_alarms = [
+      { name = "a", threshold = 1, metric_queries = [{ id = "q", return_data = true, expression = "1" }] },
+      { name = "a", threshold = 2, metric_queries = [{ id = "q", return_data = true, expression = "2" }] },
+    ]
+  }
+  expect_failures = [var.additional_scale_up_alarms]
+}
+
+run "additional_alarms_require_request_count_approach" {
+  command = plan
+  variables {
+    scaling_approach           = "target_tracking"
+    additional_scale_up_alarms = [{ name = "a", threshold = 1, metric_queries = [{ id = "q", return_data = true, expression = "1" }] }]
+  }
+  expect_failures = [var.additional_scale_up_alarms]
+}
+
+run "additional_alarm_datapoints_within_evaluation_periods" {
+  command = plan
+  variables {
+    additional_scale_up_alarms = [{ name = "a", threshold = 1, evaluation_periods = 1, datapoints_to_alarm = 2, metric_queries = [{ id = "q", return_data = true, expression = "1" }] }]
+  }
+  expect_failures = [var.additional_scale_up_alarms]
+}
+
+run "additional_alarm_must_compare_upward" {
+  command = plan
+  variables {
+    additional_scale_up_alarms = [{ name = "a", threshold = 1, comparison_operator = "LessThanThreshold", metric_queries = [{ id = "q", return_data = true, expression = "1" }] }]
+  }
+  expect_failures = [var.additional_scale_up_alarms]
+}
