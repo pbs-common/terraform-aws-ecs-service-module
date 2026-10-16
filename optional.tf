@@ -770,6 +770,47 @@ variable "sqs_scale_down_policy_name" {
   type        = string
 }
 
+variable "sqs_scale_down_step_bound" {
+  description = <<EOT
+(optional) Which side of the alarm threshold the SQS scale-down step adjustment is bounded on.
+
+Step adjustments are measured as a delta from the alarm threshold, and the bounds are asymmetric:
+the lower bound is **inclusive** and the upper bound is **exclusive**. Which one is correct
+therefore depends on the scale-down alarm's comparison operator.
+
+- `upper` (default) suits `LessThanThreshold`. The metric is strictly below the threshold when the
+  alarm fires, so the delta is negative and falls inside `(-inf, 0)`.
+- `lower` suits `LessThanOrEqualToThreshold` where the metric settles *at* the threshold — for
+  example `ApproximateAgeOfOldestMessage <= 0`. The delta is then exactly `0`, which the exclusive
+  upper bound does **not** match, so the policy would never fire. `[0, +inf)` does match it.
+
+Getting this wrong does not fail an apply; the service simply never scales back down.
+EOT
+  default     = "upper"
+  type        = string
+  validation {
+    condition     = contains(["upper", "lower"], var.sqs_scale_down_step_bound)
+    error_message = "The sqs_scale_down_step_bound must be one of [upper, lower]."
+  }
+}
+
+variable "metric_aggregation_type" {
+  description = <<EOT
+(optional) How CloudWatch aggregates the metric's datapoints when evaluating which step adjustment
+to apply, for every step-scaling policy this module creates.
+
+This is distinct from the alarm statistic (`sqs_up_statistic` and friends), which controls how the
+alarm itself evaluates the metric. It only has an observable effect when a policy defines more
+than one step; with a single step the same adjustment is chosen either way.
+EOT
+  default     = "Average"
+  type        = string
+  validation {
+    condition     = contains(["Average", "Minimum", "Maximum"], var.metric_aggregation_type)
+    error_message = "The metric_aggregation_type must be one of [Average, Minimum, Maximum]."
+  }
+}
+
 variable "sqs_visible_up_threshold" {
   description = "Number of visible SQS messages that triggers a scale-up event"
   default     = 100
