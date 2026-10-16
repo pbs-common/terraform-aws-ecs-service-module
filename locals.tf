@@ -194,6 +194,11 @@ locals {
   # step_scaling (CPU/memory), sqs and request_count each create one step scale-up policy, and never
   # more than one at a time; scale_up_steps and additional_scale_up_alarms feed whichever exists.
   supports_step_scale_up_inputs = contains(["request_count", "sqs"], var.scaling_approach) || (var.scaling_approach == "step_scaling" && !var.requests_count_scaling)
+  step_scale_up_policy_arn = one(concat(
+    aws_appautoscaling_policy.scale_up_policy[*].arn,
+    aws_appautoscaling_policy.sqs_scale_up_policy[*].arn,
+    aws_appautoscaling_policy.request_count_scale_up_policy[*].arn,
+  ))
 
   # Without explicit steps, each of those scale-up policies keeps its single step of scale_up_adjustment tasks.
   scale_up_steps = var.scale_up_steps != null ? var.scale_up_steps : [

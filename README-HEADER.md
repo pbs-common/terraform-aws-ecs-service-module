@@ -152,33 +152,6 @@ With `scaling_approach = "request_count"`, the service scales on ALB request met
 
 For proportional scale-up steps and extra scale-up alarms, see [Step Scaling Options](#step-scaling-options).
 
-`RequestCountPerTarget` only rises once traffic reaches this service. To scale up earlier, for instance when an upstream service starts receiving more traffic, add alarms with `additional_scale_up_alarms`. Each one triggers the same scale-up policy as the request-count alarm. Any alarm firing scales the service up, so extra alarms can make it scale up earlier but never later. Each alarm takes CloudWatch `metric_queries`, metrics or math expressions, and exactly one of them must set `return_data = true`:
-
-```hcl
-additional_scale_up_alarms = [{
-  name                = "upstream"
-  threshold           = 5000
-  evaluation_periods  = 2
-  datapoints_to_alarm = 1
-  metric_queries = [{
-    id          = "upstream_requests"
-    return_data = true
-    metric = {
-      namespace   = "AWS/ApplicationELB"
-      metric_name = "RequestCount"
-      dimensions = {
-        LoadBalancer = "app/upstream-alb/1111111111111111"
-        TargetGroup  = "targetgroup/upstream-tg/2222222222222222"
-      }
-    }
-  }]
-}]
-```
-
-The steps in `scale_up_steps` are measured from the threshold of whichever alarm fired, in that alarm's units. An extra alarm on a metric that runs in the thousands breaches by thousands, and so jumps straight to the last step of bounds sized for `RequestCountPerTarget`. Scale such a metric with a math expression (`"m1 / 100"`, say) so that its breaches are comparable.
-
-Extra alarms only trigger scale-up; they do not hold back scale-down. During an upstream surge that has not yet reached this service, the per-task metric is still low, and scaling up early lowers it further, so the scale-down alarm can be in ALARM at the same time as the extra alarm. The service then scales up every `scale_up_cooldown` and back down every `scale_down_cooldown` for as long as both alarms fire. To avoid that, make scale-down deliberately slow when using extra alarms: a conservative `alb_scale_down_threshold`, `alb_down_datapoints_to_alarm` equal to `scaling_evaluation_periods`, and a `scale_down_cooldown` longer than the time the surge takes to reach this service.
-
 `RequestCountPerTarget` divides requests by the number of healthy tasks, so it drops whenever tasks are added or come up healthy. Set `alb_metric_name = "RequestCount"` to alarm on the target group's total requests instead, which does not depend on the number of healthy tasks, and size both thresholds as totals per `scaling_evaluation_period`. Adding tasks does not lower `RequestCount`. While traffic stays above `alb_scale_up_threshold`, the service keeps adding tasks every `scale_up_cooldown` until it reaches `max_capacity`, and it scales down only once traffic falls below `alb_scale_down_threshold`.
 
 Tune each alarm with `alb_up_datapoints_to_alarm` / `alb_down_datapoints_to_alarm` (out of `scaling_evaluation_periods`) and `alb_up_treat_missing_data` / `alb_down_treat_missing_data`. An ALB publishes no request metrics for a period with no requests. Set `alb_down_treat_missing_data = "breaching"` so that an idle service can still scale down:
@@ -211,6 +184,33 @@ scale_up_steps = [
 ```
 
 Size adjustments to the service's normal task count: a step that doubles a 2-task service is a modest jump for a 20-task one. However large a step is, the service never grows beyond `max_capacity`.
+
+A service's own metrics only rise once traffic reaches it. To scale up earlier, for instance when an upstream service starts receiving more traffic, add alarms with `additional_scale_up_alarms`. Each one triggers the same scale-up policy as the approach's own scale-up alarms. Any alarm firing scales the service up, so extra alarms can make it scale up earlier but never later. Each alarm takes CloudWatch `metric_queries`, metrics or math expressions, and exactly one of them must set `return_data = true`:
+
+```hcl
+additional_scale_up_alarms = [{
+  name                = "upstream"
+  threshold           = 5000
+  evaluation_periods  = 2
+  datapoints_to_alarm = 1
+  metric_queries = [{
+    id          = "upstream_requests"
+    return_data = true
+    metric = {
+      namespace   = "AWS/ApplicationELB"
+      metric_name = "RequestCount"
+      dimensions = {
+        LoadBalancer = "app/upstream-alb/1111111111111111"
+        TargetGroup  = "targetgroup/upstream-tg/2222222222222222"
+      }
+    }
+  }]
+}]
+```
+
+The steps in `scale_up_steps` are measured from the threshold of whichever alarm fired, in that alarm's units. An extra alarm on a metric that runs in the thousands breaches by thousands, and so jumps straight to the last step of bounds sized for CPU points or `RequestCountPerTarget`. To make its breaches comparable, scale such a metric with a math expression: set `return_data = false` on `upstream_requests` and add a returning query with `expression = "upstream_requests / 100"`.
+
+Extra alarms only trigger scale-up; they do not hold back scale-down. During an upstream surge that has not yet reached this service, the service's own metric is still low, and scaling up early lowers it further, so the scale-down alarm can be in ALARM at the same time as the extra alarm. The service then scales up every `scale_up_cooldown` and back down every `scale_down_cooldown` for as long as both alarms fire. To avoid that, make scale-down deliberately slow when using extra alarms: a conservative scale-down threshold, scale-down datapoints to alarm equal to the evaluation periods, and a `scale_down_cooldown` longer than the time the surge takes to reach this service.
 
 ## Adding This Version of the Module
 

@@ -130,3 +130,44 @@ run "custom_metric_step_scaling_rejects_steps" {
   }
   expect_failures = [var.scale_up_steps]
 }
+
+# ── Additional scale-up alarms ───────────────────────────────────────────────
+
+run "sqs_additional_alarm_triggers_sqs_scale_up_policy" {
+  command = plan
+
+  variables {
+    additional_scale_up_alarms = [{ name = "upstream", threshold = 1, metric_queries = [{ id = "q", return_data = true, expression = "1" }] }]
+  }
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.additional_scale_up["upstream"].alarm_actions == toset(["arn:aws:autoscaling:us-east-1:123456789012:scalingPolicy:sqs-scale-up"])
+    error_message = "With scaling_approach sqs, an extra alarm must trigger the SQS scale-up policy."
+  }
+}
+
+run "step_scaling_additional_alarm_triggers_step_scale_up_policy" {
+  command = plan
+
+  variables {
+    scaling_approach           = "step_scaling"
+    additional_scale_up_alarms = [{ name = "upstream", threshold = 1, metric_queries = [{ id = "q", return_data = true, expression = "1" }] }]
+  }
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.additional_scale_up["upstream"].alarm_actions == toset(["arn:aws:autoscaling:us-east-1:123456789012:scalingPolicy:step-scale-up"])
+    error_message = "With scaling_approach step_scaling, an extra alarm must trigger the CPU/memory scale-up policy."
+  }
+}
+
+run "legacy_requests_count_scaling_rejects_additional_alarms" {
+  command = plan
+  variables {
+    scaling_approach           = "step_scaling"
+    requests_count_scaling     = true
+    create_lb                  = true
+    cnames                     = []
+    additional_scale_up_alarms = [{ name = "upstream", threshold = 1, metric_queries = [{ id = "q", return_data = true, expression = "1" }] }]
+  }
+  expect_failures = [var.additional_scale_up_alarms]
+}

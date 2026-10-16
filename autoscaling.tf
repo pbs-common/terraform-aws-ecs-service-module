@@ -500,9 +500,9 @@ resource "aws_cloudwatch_metric_alarm" "request_count_low" {
   )
 }
 
-# Each extra alarm is an OR with request_count_high: any one firing triggers the same scale-up policy.
+# Each extra alarm is an OR with the approach's own scale-up alarms: any one firing triggers the same scale-up policy.
 resource "aws_cloudwatch_metric_alarm" "additional_scale_up" {
-  for_each = var.scaling_approach == "request_count" ? { for a in var.additional_scale_up_alarms : a.name => a } : {}
+  for_each = local.supports_step_scale_up_inputs ? { for a in var.additional_scale_up_alarms : a.name => a } : {}
 
   alarm_name          = "${local.name}-${each.value.name}-scale-up"
   alarm_description   = "Scale up ${local.name} based on ${each.value.name}"
@@ -535,7 +535,7 @@ resource "aws_cloudwatch_metric_alarm" "additional_scale_up" {
   }
 
   actions_enabled = true
-  alarm_actions   = [aws_appautoscaling_policy.request_count_scale_up_policy[0].arn]
+  alarm_actions   = [local.step_scale_up_policy_arn]
 
   tags = merge(
     local.tags,

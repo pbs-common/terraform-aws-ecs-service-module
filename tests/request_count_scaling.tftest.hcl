@@ -262,7 +262,7 @@ run "additional_alarm_names_must_be_unique" {
   expect_failures = [var.additional_scale_up_alarms]
 }
 
-run "additional_alarms_require_request_count_approach" {
+run "additional_alarms_reject_unsupported_approach" {
   command = plan
   variables {
     scaling_approach           = "target_tracking"

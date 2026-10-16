@@ -936,7 +936,7 @@ variable "scale_up_steps" {
 }
 
 variable "additional_scale_up_alarms" {
-  description = "(optional) Extra CloudWatch alarms that trigger the `request_count` scale-up policy, alongside the alarm on `alb_metric_name`. Any one of them firing scales the service up, so they can make it scale up earlier but never later. Each alarm watches the `metric_queries` given, exactly one of which must return data, and is named `<name>-<alarm name>-scale-up`. Steps in `scale_up_steps` are measured from the threshold of whichever alarm fired. Only used when `scaling_approach` is `request_count`."
+  description = "(optional) Extra CloudWatch alarms that trigger the scale-up policy of `scaling_approach` `step_scaling` (CPU/memory), `sqs` or `request_count`, alongside that approach's own scale-up alarms. Any one of them firing scales the service up, so they can make it scale up earlier but never later. Each alarm watches the `metric_queries` given, exactly one of which must return data, and is named `<name>-<alarm name>-scale-up`. Steps in `scale_up_steps` are measured from the threshold of whichever alarm fired. Not supported with `requests_count_scaling = true`."
   default     = []
   type = list(object({
     name                = string
@@ -961,8 +961,8 @@ variable "additional_scale_up_alarms" {
     }))
   }))
   validation {
-    condition     = length(var.additional_scale_up_alarms) == 0 || var.scaling_approach == "request_count"
-    error_message = "The additional_scale_up_alarms are only used when scaling_approach is request_count."
+    condition     = length(var.additional_scale_up_alarms) == 0 || contains(["request_count", "sqs"], var.scaling_approach) || (var.scaling_approach == "step_scaling" && !var.requests_count_scaling)
+    error_message = "The additional_scale_up_alarms are only used when scaling_approach is step_scaling (without requests_count_scaling), sqs or request_count."
   }
   validation {
     condition     = length(distinct([for a in var.additional_scale_up_alarms : a.name])) == length(var.additional_scale_up_alarms)
