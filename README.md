@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -75,7 +75,7 @@ By default the service runs on the `launch_type` given (`FARGATE` unless overrid
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -150,7 +150,7 @@ sqs_down_datapoints_to_alarm = 2
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`12.0.1`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -361,6 +361,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_memory_count_scaling"></a> [memory\_count\_scaling](#input\_memory\_count\_scaling) | Use Memory CloudWatch metric for scaling | `bool` | `false` | no |
 | <a name="input_memory_reservation"></a> [memory\_reservation](#input\_memory\_reservation) | (optional) memory reservation for task | `number` | `512` | no |
 | <a name="input_mesh_name"></a> [mesh\_name](#input\_mesh\_name) | (optional) the name for the App Mesh this task is associated with. If null, ignored | `string` | `null` | no |
+| <a name="input_metric_aggregation_type"></a> [metric\_aggregation\_type](#input\_metric\_aggregation\_type) | (optional) How CloudWatch aggregates the metric's datapoints when evaluating which step adjustment<br/>to apply, for every step-scaling policy this module creates.<br/><br/>This is distinct from the alarm statistic (`sqs_up_statistic` and friends), which controls how the<br/>alarm itself evaluates the metric. It only has an observable effect when a policy defines more<br/>than one step; with a single step the same adjustment is chosen either way. | `string` | `"Average"` | no |
 | <a name="input_min_capacity"></a> [min\_capacity](#input\_min\_capacity) | The minimum capacity of tasks for this service | `number` | `1` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name of the service. Will default to product if not defined. | `string` | `null` | no |
 | <a name="input_namespace_id"></a> [namespace\_id](#input\_namespace\_id) | Namespace ID. | `string` | `null` | no |
@@ -407,6 +408,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_sqs_period"></a> [sqs\_period](#input\_sqs\_period) | (optional) Period, in seconds, over which each SQS scaling alarm's metric is aggregated. | `number` | `60` | no |
 | <a name="input_sqs_queue_name"></a> [sqs\_queue\_name](#input\_sqs\_queue\_name) | Name of the SQS queue to use for SQS-based scaling. Required when scaling\_approach is `sqs` | `string` | `""` | no |
 | <a name="input_sqs_scale_down_policy_name"></a> [sqs\_scale\_down\_policy\_name](#input\_sqs\_scale\_down\_policy\_name) | Override name for the SQS scale-down autoscaling policy. Defaults to `${local.name}-sqs-scale-down-policy`. | `string` | `null` | no |
+| <a name="input_sqs_scale_down_step_bound"></a> [sqs\_scale\_down\_step\_bound](#input\_sqs\_scale\_down\_step\_bound) | (optional) Which side of the alarm threshold the SQS scale-down step adjustment is bounded on.<br/><br/>Step adjustments are measured as a delta from the alarm threshold, and the bounds are asymmetric:<br/>the lower bound is **inclusive** and the upper bound is **exclusive**. Which one is correct<br/>therefore depends on the scale-down alarm's comparison operator.<br/><br/>- `upper` (default) suits `LessThanThreshold`. The metric is strictly below the threshold when the<br/>  alarm fires, so the delta is negative and falls inside `(-inf, 0)`.<br/>- `lower` suits `LessThanOrEqualToThreshold` where the metric settles *at* the threshold — for<br/>  example `ApproximateAgeOfOldestMessage <= 0`. The delta is then exactly `0`, which the exclusive<br/>  upper bound does **not** match, so the policy would never fire. `[0, +inf)` does match it.<br/><br/>Getting this wrong does not fail an apply; the service simply never scales back down. | `string` | `"upper"` | no |
 | <a name="input_sqs_scale_up_policy_name"></a> [sqs\_scale\_up\_policy\_name](#input\_sqs\_scale\_up\_policy\_name) | Override name for the SQS scale-up autoscaling policy. Defaults to `${local.name}-sqs-scale-up-policy`. | `string` | `null` | no |
 | <a name="input_sqs_up_comparison_operator"></a> [sqs\_up\_comparison\_operator](#input\_sqs\_up\_comparison\_operator) | (optional) How the SQS scale-up alarm compares the metric to `sqs_visible_up_threshold`. | `string` | `"GreaterThanThreshold"` | no |
 | <a name="input_sqs_up_datapoints_to_alarm"></a> [sqs\_up\_datapoints\_to\_alarm](#input\_sqs\_up\_datapoints\_to\_alarm) | (optional) Datapoints within the evaluation periods that must breach before the SQS scale-up alarm fires. Defaults to all of them. | `number` | `null` | no |
