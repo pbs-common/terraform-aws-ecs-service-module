@@ -341,7 +341,10 @@ resource "aws_cloudwatch_metric_alarm" "sqs_high" {
   metric_query {
     id          = "sqs_messages"
     return_data = true
-    label       = "SQS Messages"
+    # The console renders this label in place of the metric name in the scaling condition, so a
+    # fixed string makes the scale-up and scale-down alarms indistinguishable there even when
+    # they watch different metrics. Display only -- it has no effect on evaluation.
+    label = local.sqs_up_metric_name
     metric {
       namespace   = "AWS/SQS"
       metric_name = local.sqs_up_metric_name
@@ -375,7 +378,10 @@ resource "aws_cloudwatch_metric_alarm" "sqs_low" {
   metric_query {
     id          = "sqs_messages"
     return_data = true
-    label       = "SQS Messages"
+    # The console renders this label in place of the metric name in the scaling condition, so a
+    # fixed string makes the scale-up and scale-down alarms indistinguishable there even when
+    # they watch different metrics. Display only -- it has no effect on evaluation.
+    label = local.sqs_down_metric_name
     metric {
       namespace   = "AWS/SQS"
       metric_name = local.sqs_down_metric_name
