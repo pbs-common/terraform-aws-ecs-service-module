@@ -295,3 +295,17 @@ run "custom_metric_datapoints_cannot_exceed_evaluation_periods" {
   }
   expect_failures = [var.custom_metric_step_scaling]
 }
+
+# A wrapper module may pass requests_count_scaling through as null. That planned before the
+# shared step inputs existed, so it must still plan (and create no step policies, as before).
+run "step_scaling_with_null_requests_count_scaling_still_plans" {
+  command = plan
+  variables {
+    scaling_approach       = "step_scaling"
+    requests_count_scaling = null
+  }
+  assert {
+    condition     = length(aws_appautoscaling_policy.scale_up_policy) == 0 && length(aws_cloudwatch_metric_alarm.additional_scale_up) == 0
+    error_message = "A null requests_count_scaling must keep planning, with no step policies, as before."
+  }
+}

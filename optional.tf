@@ -961,7 +961,7 @@ variable "scale_up_steps" {
     adjustment  = number
   }))
   validation {
-    condition     = var.scale_up_steps == null || contains(["request_count", "sqs"], var.scaling_approach) || (var.scaling_approach == "step_scaling" && !var.requests_count_scaling)
+    condition     = var.scale_up_steps == null || contains(["request_count", "sqs"], var.scaling_approach) || (var.scaling_approach == "step_scaling" && var.requests_count_scaling == false)
     error_message = "The scale_up_steps are only used when scaling_approach is step_scaling (without requests_count_scaling), sqs or request_count."
   }
   validation {
@@ -1021,7 +1021,7 @@ variable "additional_scale_up_alarms" {
     }))
   }))
   validation {
-    condition     = length(var.additional_scale_up_alarms) == 0 || contains(["request_count", "sqs"], var.scaling_approach) || (var.scaling_approach == "step_scaling" && !var.requests_count_scaling)
+    condition     = length(var.additional_scale_up_alarms) == 0 || contains(["request_count", "sqs"], var.scaling_approach) || (var.scaling_approach == "step_scaling" && var.requests_count_scaling == false)
     error_message = "The additional_scale_up_alarms are only used when scaling_approach is step_scaling (without requests_count_scaling), sqs or request_count."
   }
   validation {
