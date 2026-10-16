@@ -150,20 +150,7 @@ sqs_down_datapoints_to_alarm = 2
 
 With `scaling_approach = "request_count"`, the service scales on ALB request metrics through step scaling: a high alarm at `alb_scale_up_threshold` and a low alarm at `alb_scale_down_threshold`.
 
-By default every scale-up adds `scale_up_adjustment` tasks, however large the breach. Set `request_count_scale_up_steps` to add more tasks for a bigger breach. Bounds are offsets from the threshold in the metric's own units, not percentages. Steps must start at `0`, be contiguous, and leave `upper_bound` unset on the last one. With the default threshold of 140, this adds 1 task up to 50% over the threshold, 2 tasks up to 100% over, and 4 tasks beyond that:
-
-```hcl
-scaling_approach       = "request_count"
-alb_scale_up_threshold = 140
-
-request_count_scale_up_steps = [
-  { lower_bound = 0, upper_bound = 70, adjustment = 1 },
-  { lower_bound = 70, upper_bound = 140, adjustment = 2 },
-  { lower_bound = 140, adjustment = 4 },
-]
-```
-
-Size adjustments to the service's normal task count: a step that doubles a 2-task service is a modest jump for a 20-task one. However large a step is, the service never grows beyond `max_capacity`.
+For proportional scale-up steps and extra scale-up alarms, see [Step Scaling Options](#step-scaling-options).
 
 `RequestCountPerTarget` only rises once traffic reaches this service. To scale up earlier, for instance when an upstream service starts receiving more traffic, add alarms with `additional_scale_up_alarms`. Each one triggers the same scale-up policy as the request-count alarm. Any alarm firing scales the service up, so extra alarms can make it scale up earlier but never later. Each alarm takes CloudWatch `metric_queries`, metrics or math expressions, and exactly one of them must set `return_data = true`:
 
@@ -188,7 +175,7 @@ additional_scale_up_alarms = [{
 }]
 ```
 
-The steps in `request_count_scale_up_steps` are measured from the threshold of whichever alarm fired, in that alarm's units. An extra alarm on a metric that runs in the thousands breaches by thousands, and so jumps straight to the last step of bounds sized for `RequestCountPerTarget`. Scale such a metric with a math expression (`"m1 / 100"`, say) so that its breaches are comparable.
+The steps in `scale_up_steps` are measured from the threshold of whichever alarm fired, in that alarm's units. An extra alarm on a metric that runs in the thousands breaches by thousands, and so jumps straight to the last step of bounds sized for `RequestCountPerTarget`. Scale such a metric with a math expression (`"m1 / 100"`, say) so that its breaches are comparable.
 
 Extra alarms only trigger scale-up; they do not hold back scale-down. During an upstream surge that has not yet reached this service, the per-task metric is still low, and scaling up early lowers it further, so the scale-down alarm can be in ALARM at the same time as the extra alarm. The service then scales up every `scale_up_cooldown` and back down every `scale_down_cooldown` for as long as both alarms fire. To avoid that, make scale-down deliberately slow when using extra alarms: a conservative `alb_scale_down_threshold`, `alb_down_datapoints_to_alarm` equal to `scaling_evaluation_periods`, and a `scale_down_cooldown` longer than the time the surge takes to reach this service.
 
@@ -205,6 +192,25 @@ alb_up_datapoints_to_alarm   = 1
 alb_down_datapoints_to_alarm = 3
 alb_down_treat_missing_data  = "breaching"
 ```
+
+### Step Scaling Options
+
+The step-scaling approaches, `step_scaling` (CPU/memory), `sqs` and `request_count`, share the scale-up inputs below. They are not supported with `requests_count_scaling = true`; use `scaling_approach = "request_count"` instead.
+
+By default every scale-up adds `scale_up_adjustment` tasks, however large the breach. Set `scale_up_steps` to add more tasks for a bigger breach. Bounds are offsets from the threshold in the metric's own units, not percentages: percentage points of CPU or memory for `step_scaling`, messages for `sqs`, and requests for `request_count`. Steps must start at `0`, be contiguous, and leave `upper_bound` unset on the last one. With `request_count` and the default threshold of 140, this adds 1 task up to 50% over the threshold, 2 tasks up to 100% over, and 4 tasks beyond that:
+
+```hcl
+scaling_approach       = "request_count"
+alb_scale_up_threshold = 140
+
+scale_up_steps = [
+  { lower_bound = 0, upper_bound = 70, adjustment = 1 },
+  { lower_bound = 70, upper_bound = 140, adjustment = 2 },
+  { lower_bound = 140, adjustment = 4 },
+]
+```
+
+Size adjustments to the service's normal task count: a step that doubles a 2-task service is a modest jump for a 20-task one. However large a step is, the service never grows beyond `max_capacity`.
 
 ## Adding This Version of the Module
 
@@ -325,7 +331,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_product"></a> [product](#input\_product) | Tag used to group resources according to product | `string` | n/a | yes |
 | <a name="input_repo"></a> [repo](#input\_repo) | Tag used to point to the repo using this module | `string` | n/a | yes |
 | <a name="input_acm_arn"></a> [acm\_arn](#input\_acm\_arn) | ARN of the ACM certificate to use for the service. If null, one will be guessed based on the primary hosted zone of the service. | `string` | `null` | no |
-| <a name="input_additional_scale_up_alarms"></a> [additional\_scale\_up\_alarms](#input\_additional\_scale\_up\_alarms) | (optional) Extra CloudWatch alarms that trigger the `request_count` scale-up policy, alongside the alarm on `alb_metric_name`. Any one of them firing scales the service up, so they can make it scale up earlier but never later. Each alarm watches the `metric_queries` given, exactly one of which must return data, and is named `<name>-<alarm name>-scale-up`. Steps in `request_count_scale_up_steps` are measured from the threshold of whichever alarm fired. Only used when `scaling_approach` is `request_count`. | <pre>list(object({<br/>    name                = string<br/>    threshold           = number<br/>    evaluation_periods  = optional(number, 1)<br/>    datapoints_to_alarm = optional(number)<br/>    comparison_operator = optional(string, "GreaterThanOrEqualToThreshold")<br/>    treat_missing_data  = optional(string, "missing")<br/>    metric_queries = list(object({<br/>      id          = string<br/>      expression  = optional(string)<br/>      label       = optional(string)<br/>      return_data = optional(bool, false)<br/>      metric = optional(object({<br/>        namespace   = string<br/>        metric_name = string<br/>        period      = optional(number, 60)<br/>        stat        = optional(string, "Sum")<br/>        unit        = optional(string)<br/>        dimensions  = optional(map(string), {})<br/>      }))<br/>    }))<br/>  }))</pre> | `[]` | no |
+| <a name="input_additional_scale_up_alarms"></a> [additional\_scale\_up\_alarms](#input\_additional\_scale\_up\_alarms) | (optional) Extra CloudWatch alarms that trigger the `request_count` scale-up policy, alongside the alarm on `alb_metric_name`. Any one of them firing scales the service up, so they can make it scale up earlier but never later. Each alarm watches the `metric_queries` given, exactly one of which must return data, and is named `<name>-<alarm name>-scale-up`. Steps in `scale_up_steps` are measured from the threshold of whichever alarm fired. Only used when `scaling_approach` is `request_count`. | <pre>list(object({<br/>    name                = string<br/>    threshold           = number<br/>    evaluation_periods  = optional(number, 1)<br/>    datapoints_to_alarm = optional(number)<br/>    comparison_operator = optional(string, "GreaterThanOrEqualToThreshold")<br/>    treat_missing_data  = optional(string, "missing")<br/>    metric_queries = list(object({<br/>      id          = string<br/>      expression  = optional(string)<br/>      label       = optional(string)<br/>      return_data = optional(bool, false)<br/>      metric = optional(object({<br/>        namespace   = string<br/>        metric_name = string<br/>        period      = optional(number, 60)<br/>        stat        = optional(string, "Sum")<br/>        unit        = optional(string)<br/>        dimensions  = optional(map(string), {})<br/>      }))<br/>    }))<br/>  }))</pre> | `[]` | no |
 | <a name="input_alb_alarm_high_name"></a> [alb\_alarm\_high\_name](#input\_alb\_alarm\_high\_name) | Override name for the ALB scale-up CloudWatch alarm. Defaults to `${local.name}-request-count-high`. | `string` | `null` | no |
 | <a name="input_alb_alarm_low_name"></a> [alb\_alarm\_low\_name](#input\_alb\_alarm\_low\_name) | Override name for the ALB scale-down CloudWatch alarm. Defaults to `${local.name}-request-count-low`. | `string` | `null` | no |
 | <a name="input_alb_arn"></a> [alb\_arn](#input\_alb\_arn) | ARN of the ALB used for ALB-based scaling. Required when `scaling_approach` is `request_count` and `create_lb` is false. When `create_lb` is true the module's own ALB is used automatically. | `string` | `null` | no |
@@ -441,7 +447,6 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_propagate_tags"></a> [propagate\_tags](#input\_propagate\_tags) | Specifies whether to propagate the tags from the task definition or the service to the tasks | `string` | `"SERVICE"` | no |
 | <a name="input_public_subnets"></a> [public\_subnets](#input\_public\_subnets) | Public subnets for the service. If null, public subnets will be looked up based on environment tag. | `list(string)` | `null` | no |
 | <a name="input_pythonpath"></a> [pythonpath](#input\_pythonpath) | (optional) PYTHONPATH of the application; required by the cwagent sidecar container | `string` | `":"` | no |
-| <a name="input_request_count_scale_up_steps"></a> [request\_count\_scale\_up\_steps](#input\_request\_count\_scale\_up\_steps) | (optional) Step adjustments for the `request_count` scale-up policy, so a bigger breach adds more tasks. Bounds are offsets from the threshold of the alarm that fired, in that alarm's metric units, not percentages. Steps must be in ascending order, start at `lower_bound = 0`, be contiguous, and the last one must leave `upper_bound` unset. Adjustments must be positive. Defaults to one step adding `scale_up_adjustment` tasks. Only used when `scaling_approach` is `request_count`. | <pre>list(object({<br/>    lower_bound = number<br/>    upper_bound = optional(number)<br/>    adjustment  = number<br/>  }))</pre> | `null` | no |
 | <a name="input_requests_count_scaling"></a> [requests\_count\_scaling](#input\_requests\_count\_scaling) | Use RequestCountPerTarget CloudWatch metric for scaling | `bool` | `false` | no |
 | <a name="input_requires_compatibilities"></a> [requires\_compatibilities](#input\_requires\_compatibilities) | (optional) capabilities that the task requires | `set(string)` | <pre>[<br/>  "FARGATE"<br/>]</pre> | no |
 | <a name="input_restricted_sg"></a> [restricted\_sg](#input\_restricted\_sg) | SG to receive restricted service access. If null, no sg will be configured to connect | `string` | `null` | no |
@@ -459,6 +464,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_scale_up_cpu_threshold"></a> [scale\_up\_cpu\_threshold](#input\_scale\_up\_cpu\_threshold) | Threshold at which CPU utilization triggers a scale up event | `number` | `80` | no |
 | <a name="input_scale_up_memory_threshold"></a> [scale\_up\_memory\_threshold](#input\_scale\_up\_memory\_threshold) | Threshold at which Memory utilization triggers a scale up event | `number` | `80` | no |
 | <a name="input_scale_up_requests_count_per_target"></a> [scale\_up\_requests\_count\_per\_target](#input\_scale\_up\_requests\_count\_per\_target) | Threshold at which Request count per target triggers a scale up event | `number` | `140` | no |
+| <a name="input_scale_up_steps"></a> [scale\_up\_steps](#input\_scale\_up\_steps) | (optional) Step adjustments for the scale-up policy of `scaling_approach` `step_scaling` (CPU/memory), `sqs` or `request_count`, so a bigger breach adds more tasks. Bounds are offsets from the threshold of the alarm that fired, in that alarm's metric units, not percentages. Steps must be in ascending order, start at `lower_bound = 0`, be contiguous, and the last one must leave `upper_bound` unset. Adjustments must be positive. Defaults to one step adding `scale_up_adjustment` tasks. Not supported with `requests_count_scaling = true`. | <pre>list(object({<br/>    lower_bound = number<br/>    upper_bound = optional(number)<br/>    adjustment  = number<br/>  }))</pre> | `null` | no |
 | <a name="input_scaling_approach"></a> [scaling\_approach](#input\_scaling\_approach) | Approach to take with scaling. Valid values are `target_tracking`, `step_scaling`, `sqs`, `request_count`, `custom_metric_target_tracking`, `custom_metric_step_scaling` and `none` | `string` | `"target_tracking"` | no |
 | <a name="input_scaling_evaluation_period"></a> [scaling\_evaluation\_period](#input\_scaling\_evaluation\_period) | Scaling evaluation period in seconds | `number` | `60` | no |
 | <a name="input_scaling_evaluation_periods"></a> [scaling\_evaluation\_periods](#input\_scaling\_evaluation\_periods) | Number of periods over which data is compared to the threshold | `number` | `1` | no |

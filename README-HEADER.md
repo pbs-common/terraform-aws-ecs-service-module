@@ -150,20 +150,7 @@ sqs_down_datapoints_to_alarm = 2
 
 With `scaling_approach = "request_count"`, the service scales on ALB request metrics through step scaling: a high alarm at `alb_scale_up_threshold` and a low alarm at `alb_scale_down_threshold`.
 
-By default every scale-up adds `scale_up_adjustment` tasks, however large the breach. Set `request_count_scale_up_steps` to add more tasks for a bigger breach. Bounds are offsets from the threshold in the metric's own units, not percentages. Steps must start at `0`, be contiguous, and leave `upper_bound` unset on the last one. With the default threshold of 140, this adds 1 task up to 50% over the threshold, 2 tasks up to 100% over, and 4 tasks beyond that:
-
-```hcl
-scaling_approach       = "request_count"
-alb_scale_up_threshold = 140
-
-request_count_scale_up_steps = [
-  { lower_bound = 0, upper_bound = 70, adjustment = 1 },
-  { lower_bound = 70, upper_bound = 140, adjustment = 2 },
-  { lower_bound = 140, adjustment = 4 },
-]
-```
-
-Size adjustments to the service's normal task count: a step that doubles a 2-task service is a modest jump for a 20-task one. However large a step is, the service never grows beyond `max_capacity`.
+For proportional scale-up steps and extra scale-up alarms, see [Step Scaling Options](#step-scaling-options).
 
 `RequestCountPerTarget` only rises once traffic reaches this service. To scale up earlier, for instance when an upstream service starts receiving more traffic, add alarms with `additional_scale_up_alarms`. Each one triggers the same scale-up policy as the request-count alarm. Any alarm firing scales the service up, so extra alarms can make it scale up earlier but never later. Each alarm takes CloudWatch `metric_queries`, metrics or math expressions, and exactly one of them must set `return_data = true`:
 
@@ -188,7 +175,7 @@ additional_scale_up_alarms = [{
 }]
 ```
 
-The steps in `request_count_scale_up_steps` are measured from the threshold of whichever alarm fired, in that alarm's units. An extra alarm on a metric that runs in the thousands breaches by thousands, and so jumps straight to the last step of bounds sized for `RequestCountPerTarget`. Scale such a metric with a math expression (`"m1 / 100"`, say) so that its breaches are comparable.
+The steps in `scale_up_steps` are measured from the threshold of whichever alarm fired, in that alarm's units. An extra alarm on a metric that runs in the thousands breaches by thousands, and so jumps straight to the last step of bounds sized for `RequestCountPerTarget`. Scale such a metric with a math expression (`"m1 / 100"`, say) so that its breaches are comparable.
 
 Extra alarms only trigger scale-up; they do not hold back scale-down. During an upstream surge that has not yet reached this service, the per-task metric is still low, and scaling up early lowers it further, so the scale-down alarm can be in ALARM at the same time as the extra alarm. The service then scales up every `scale_up_cooldown` and back down every `scale_down_cooldown` for as long as both alarms fire. To avoid that, make scale-down deliberately slow when using extra alarms: a conservative `alb_scale_down_threshold`, `alb_down_datapoints_to_alarm` equal to `scaling_evaluation_periods`, and a `scale_down_cooldown` longer than the time the surge takes to reach this service.
 
@@ -205,6 +192,25 @@ alb_up_datapoints_to_alarm   = 1
 alb_down_datapoints_to_alarm = 3
 alb_down_treat_missing_data  = "breaching"
 ```
+
+### Step Scaling Options
+
+The step-scaling approaches, `step_scaling` (CPU/memory), `sqs` and `request_count`, share the scale-up inputs below. They are not supported with `requests_count_scaling = true`; use `scaling_approach = "request_count"` instead.
+
+By default every scale-up adds `scale_up_adjustment` tasks, however large the breach. Set `scale_up_steps` to add more tasks for a bigger breach. Bounds are offsets from the threshold in the metric's own units, not percentages: percentage points of CPU or memory for `step_scaling`, messages for `sqs`, and requests for `request_count`. Steps must start at `0`, be contiguous, and leave `upper_bound` unset on the last one. With `request_count` and the default threshold of 140, this adds 1 task up to 50% over the threshold, 2 tasks up to 100% over, and 4 tasks beyond that:
+
+```hcl
+scaling_approach       = "request_count"
+alb_scale_up_threshold = 140
+
+scale_up_steps = [
+  { lower_bound = 0, upper_bound = 70, adjustment = 1 },
+  { lower_bound = 70, upper_bound = 140, adjustment = 2 },
+  { lower_bound = 140, adjustment = 4 },
+]
+```
+
+Size adjustments to the service's normal task count: a step that doubles a 2-task service is a modest jump for a 20-task one. However large a step is, the service never grows beyond `max_capacity`.
 
 ## Adding This Version of the Module
 

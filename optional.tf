@@ -892,8 +892,8 @@ variable "alb_down_treat_missing_data" {
   }
 }
 
-variable "request_count_scale_up_steps" {
-  description = "(optional) Step adjustments for the `request_count` scale-up policy, so a bigger breach adds more tasks. Bounds are offsets from the threshold of the alarm that fired, in that alarm's metric units, not percentages. Steps must be in ascending order, start at `lower_bound = 0`, be contiguous, and the last one must leave `upper_bound` unset. Adjustments must be positive. Defaults to one step adding `scale_up_adjustment` tasks. Only used when `scaling_approach` is `request_count`."
+variable "scale_up_steps" {
+  description = "(optional) Step adjustments for the scale-up policy of `scaling_approach` `step_scaling` (CPU/memory), `sqs` or `request_count`, so a bigger breach adds more tasks. Bounds are offsets from the threshold of the alarm that fired, in that alarm's metric units, not percentages. Steps must be in ascending order, start at `lower_bound = 0`, be contiguous, and the last one must leave `upper_bound` unset. Adjustments must be positive. Defaults to one step adding `scale_up_adjustment` tasks. Not supported with `requests_count_scaling = true`."
   default     = null
   type = list(object({
     lower_bound = number
@@ -901,42 +901,42 @@ variable "request_count_scale_up_steps" {
     adjustment  = number
   }))
   validation {
-    condition     = var.request_count_scale_up_steps == null || var.scaling_approach == "request_count"
-    error_message = "The request_count_scale_up_steps are only used when scaling_approach is request_count."
+    condition     = var.scale_up_steps == null || contains(["request_count", "sqs"], var.scaling_approach) || (var.scaling_approach == "step_scaling" && !var.requests_count_scaling)
+    error_message = "The scale_up_steps are only used when scaling_approach is step_scaling (without requests_count_scaling), sqs or request_count."
   }
   validation {
-    condition     = var.request_count_scale_up_steps == null ? true : length(var.request_count_scale_up_steps) > 0
-    error_message = "The request_count_scale_up_steps must contain at least one step when set."
+    condition     = var.scale_up_steps == null ? true : length(var.scale_up_steps) > 0
+    error_message = "The scale_up_steps must contain at least one step when set."
   }
   validation {
-    condition     = var.request_count_scale_up_steps == null ? true : length(var.request_count_scale_up_steps) == 0 ? true : var.request_count_scale_up_steps[0].lower_bound == 0
-    error_message = "The first of request_count_scale_up_steps must have lower_bound = 0, or a breach smaller than that bound adds no tasks."
+    condition     = var.scale_up_steps == null ? true : length(var.scale_up_steps) == 0 ? true : var.scale_up_steps[0].lower_bound == 0
+    error_message = "The first of scale_up_steps must have lower_bound = 0, or a breach smaller than that bound adds no tasks."
   }
   validation {
-    condition = var.request_count_scale_up_steps == null ? true : alltrue([
-      for i in range(max(length(var.request_count_scale_up_steps) - 1, 0)) :
-      var.request_count_scale_up_steps[i].upper_bound == null ? false : var.request_count_scale_up_steps[i].upper_bound == var.request_count_scale_up_steps[i + 1].lower_bound
+    condition = var.scale_up_steps == null ? true : alltrue([
+      for i in range(max(length(var.scale_up_steps) - 1, 0)) :
+      var.scale_up_steps[i].upper_bound == null ? false : var.scale_up_steps[i].upper_bound == var.scale_up_steps[i + 1].lower_bound
     ])
-    error_message = "The request_count_scale_up_steps must be contiguous: each step's upper_bound must equal the next step's lower_bound."
+    error_message = "The scale_up_steps must be contiguous: each step's upper_bound must equal the next step's lower_bound."
   }
   validation {
-    condition     = var.request_count_scale_up_steps == null ? true : length(var.request_count_scale_up_steps) == 0 ? true : var.request_count_scale_up_steps[length(var.request_count_scale_up_steps) - 1].upper_bound == null
-    error_message = "The last of request_count_scale_up_steps must leave upper_bound unset, or a breach above it adds no tasks."
+    condition     = var.scale_up_steps == null ? true : length(var.scale_up_steps) == 0 ? true : var.scale_up_steps[length(var.scale_up_steps) - 1].upper_bound == null
+    error_message = "The last of scale_up_steps must leave upper_bound unset, or a breach above it adds no tasks."
   }
   validation {
-    condition = var.request_count_scale_up_steps == null ? true : alltrue([
-      for s in var.request_count_scale_up_steps : s.upper_bound == null ? true : s.upper_bound > s.lower_bound
+    condition = var.scale_up_steps == null ? true : alltrue([
+      for s in var.scale_up_steps : s.upper_bound == null ? true : s.upper_bound > s.lower_bound
     ])
-    error_message = "Each of request_count_scale_up_steps must have upper_bound greater than lower_bound."
+    error_message = "Each of scale_up_steps must have upper_bound greater than lower_bound."
   }
   validation {
-    condition     = var.request_count_scale_up_steps == null ? true : alltrue([for s in var.request_count_scale_up_steps : s.adjustment > 0])
-    error_message = "Each of request_count_scale_up_steps must have a positive adjustment."
+    condition     = var.scale_up_steps == null ? true : alltrue([for s in var.scale_up_steps : s.adjustment > 0])
+    error_message = "Each of scale_up_steps must have a positive adjustment."
   }
 }
 
 variable "additional_scale_up_alarms" {
-  description = "(optional) Extra CloudWatch alarms that trigger the `request_count` scale-up policy, alongside the alarm on `alb_metric_name`. Any one of them firing scales the service up, so they can make it scale up earlier but never later. Each alarm watches the `metric_queries` given, exactly one of which must return data, and is named `<name>-<alarm name>-scale-up`. Steps in `request_count_scale_up_steps` are measured from the threshold of whichever alarm fired. Only used when `scaling_approach` is `request_count`."
+  description = "(optional) Extra CloudWatch alarms that trigger the `request_count` scale-up policy, alongside the alarm on `alb_metric_name`. Any one of them firing scales the service up, so they can make it scale up earlier but never later. Each alarm watches the `metric_queries` given, exactly one of which must return data, and is named `<name>-<alarm name>-scale-up`. Steps in `scale_up_steps` are measured from the threshold of whichever alarm fired. Only used when `scaling_approach` is `request_count`."
   default     = []
   type = list(object({
     name                = string

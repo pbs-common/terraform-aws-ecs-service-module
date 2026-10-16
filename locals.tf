@@ -191,8 +191,12 @@ locals {
   alb_scaling_arn    = var.alb_arn != null ? var.alb_arn : try(aws_lb.lb[0].arn, "")
   alb_scaling_tg_arn = var.alb_target_group_arn != null ? var.alb_target_group_arn : try(aws_lb_target_group.target_group[0].arn, "")
 
-  # Without explicit steps, the request_count scale-up policy keeps its single step of scale_up_adjustment tasks.
-  request_count_scale_up_steps = var.request_count_scale_up_steps != null ? var.request_count_scale_up_steps : [
+  # step_scaling (CPU/memory), sqs and request_count each create one step scale-up policy, and never
+  # more than one at a time; scale_up_steps and additional_scale_up_alarms feed whichever exists.
+  supports_step_scale_up_inputs = contains(["request_count", "sqs"], var.scaling_approach) || (var.scaling_approach == "step_scaling" && !var.requests_count_scaling)
+
+  # Without explicit steps, each of those scale-up policies keeps its single step of scale_up_adjustment tasks.
+  scale_up_steps = var.scale_up_steps != null ? var.scale_up_steps : [
     { lower_bound = 0, upper_bound = null, adjustment = var.scale_up_adjustment }
   ]
 }
