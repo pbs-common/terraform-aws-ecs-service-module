@@ -116,6 +116,46 @@ variable "scale_down_memory_threshold" {
   type        = number
 }
 
+variable "cpu_memory_up_datapoints_to_alarm" {
+  description = "(optional) Datapoints within `scaling_evaluation_periods` that must breach before the `step_scaling` CPU and memory scale-up alarms fire. Defaults to all of them."
+  default     = null
+  type        = number
+  validation {
+    condition     = var.cpu_memory_up_datapoints_to_alarm == null ? true : var.cpu_memory_up_datapoints_to_alarm >= 1 && var.cpu_memory_up_datapoints_to_alarm <= var.scaling_evaluation_periods
+    error_message = "The cpu_memory_up_datapoints_to_alarm must be between 1 and scaling_evaluation_periods."
+  }
+}
+
+variable "cpu_memory_down_datapoints_to_alarm" {
+  description = "(optional) Datapoints within `scaling_evaluation_periods` that must breach before the `step_scaling` CPU and memory scale-down alarms fire. Defaults to all of them."
+  default     = null
+  type        = number
+  validation {
+    condition     = var.cpu_memory_down_datapoints_to_alarm == null ? true : var.cpu_memory_down_datapoints_to_alarm >= 1 && var.cpu_memory_down_datapoints_to_alarm <= var.scaling_evaluation_periods
+    error_message = "The cpu_memory_down_datapoints_to_alarm must be between 1 and scaling_evaluation_periods."
+  }
+}
+
+variable "cpu_memory_up_treat_missing_data" {
+  description = "(optional) How the `step_scaling` CPU and memory scale-up alarms treat missing datapoints."
+  default     = "missing"
+  type        = string
+  validation {
+    condition     = contains(["missing", "ignore", "breaching", "notBreaching"], var.cpu_memory_up_treat_missing_data)
+    error_message = "The cpu_memory_up_treat_missing_data must be one of [missing, ignore, breaching, notBreaching]."
+  }
+}
+
+variable "cpu_memory_down_treat_missing_data" {
+  description = "(optional) How the `step_scaling` CPU and memory scale-down alarms treat missing datapoints."
+  default     = "missing"
+  type        = string
+  validation {
+    condition     = contains(["missing", "ignore", "breaching", "notBreaching"], var.cpu_memory_down_treat_missing_data)
+    error_message = "The cpu_memory_down_treat_missing_data must be one of [missing, ignore, breaching, notBreaching]."
+  }
+}
+
 variable "scale_up_requests_count_per_target" {
   description = "Threshold at which Request count per target triggers a scale up event"
   default     = 140
@@ -752,6 +792,26 @@ variable "sqs_down_datapoints_to_alarm" {
   type        = number
 }
 
+variable "sqs_up_treat_missing_data" {
+  description = "(optional) How the SQS scale-up alarm treats missing datapoints."
+  default     = "missing"
+  type        = string
+  validation {
+    condition     = contains(["missing", "ignore", "breaching", "notBreaching"], var.sqs_up_treat_missing_data)
+    error_message = "The sqs_up_treat_missing_data must be one of [missing, ignore, breaching, notBreaching]."
+  }
+}
+
+variable "sqs_down_treat_missing_data" {
+  description = "(optional) How the SQS scale-down alarm treats missing datapoints. SQS can stop publishing metrics for a queue that has been idle for hours, so set this to `breaching` to let an idle worker scale down."
+  default     = "missing"
+  type        = string
+  validation {
+    condition     = contains(["missing", "ignore", "breaching", "notBreaching"], var.sqs_down_treat_missing_data)
+    error_message = "The sqs_down_treat_missing_data must be one of [missing, ignore, breaching, notBreaching]."
+  }
+}
+
 variable "sqs_period" {
   description = "(optional) Period, in seconds, over which each SQS scaling alarm's metric is aggregated."
   default     = 60
@@ -1021,6 +1081,7 @@ variable "custom_metric_step_scaling" {
       dimensions          = optional(map(string), {})
       period              = optional(number, 60)
       evaluation_periods  = optional(number, 1)
+      datapoints_to_alarm = optional(number)
       threshold           = number
       adjustment          = optional(number, 1)
       cooldown            = optional(number, 60)
@@ -1041,6 +1102,7 @@ variable "custom_metric_step_scaling" {
       dimensions          = optional(map(string), {})
       period              = optional(number, 60)
       evaluation_periods  = optional(number, 1)
+      datapoints_to_alarm = optional(number)
       threshold           = number
       adjustment          = optional(number, -1)
       cooldown            = optional(number, 300)
@@ -1055,6 +1117,14 @@ variable "custom_metric_step_scaling" {
     })
   }))
   default = []
+  validation {
+    condition = alltrue(flatten([
+      for m in var.custom_metric_step_scaling : [
+        for d in [m.scale_up, m.scale_down] : d.datapoints_to_alarm == null ? true : d.datapoints_to_alarm >= 1 && d.datapoints_to_alarm <= d.evaluation_periods
+      ]
+    ]))
+    error_message = "Each datapoints_to_alarm in custom_metric_step_scaling must be between 1 and its evaluation_periods."
+  }
 }
 
 variable "extra_acm_arns" {

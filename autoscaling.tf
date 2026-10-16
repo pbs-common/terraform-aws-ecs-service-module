@@ -115,6 +115,8 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   period              = var.scaling_evaluation_period
   statistic           = "Average"
   threshold           = var.scale_up_cpu_threshold
+  datapoints_to_alarm = var.cpu_memory_up_datapoints_to_alarm
+  treat_missing_data  = var.cpu_memory_up_treat_missing_data
   alarm_actions       = [aws_appautoscaling_policy.scale_up_policy[0].arn]
 
   dimensions = {
@@ -139,6 +141,8 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
   period              = var.scaling_evaluation_period
   statistic           = "Average"
   threshold           = var.scale_up_memory_threshold
+  datapoints_to_alarm = var.cpu_memory_up_datapoints_to_alarm
+  treat_missing_data  = var.cpu_memory_up_treat_missing_data
   alarm_actions       = [aws_appautoscaling_policy.scale_up_policy[0].arn]
 
   dimensions = {
@@ -163,6 +167,8 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
   period              = var.scaling_evaluation_period
   statistic           = "Average"
   threshold           = var.scale_down_cpu_threshold
+  datapoints_to_alarm = var.cpu_memory_down_datapoints_to_alarm
+  treat_missing_data  = var.cpu_memory_down_treat_missing_data
   alarm_actions       = [aws_appautoscaling_policy.scale_down_policy[0].arn]
 
   dimensions = {
@@ -187,6 +193,8 @@ resource "aws_cloudwatch_metric_alarm" "memory_low" {
   period              = var.scaling_evaluation_period
   statistic           = "Average"
   threshold           = var.scale_down_memory_threshold
+  datapoints_to_alarm = var.cpu_memory_down_datapoints_to_alarm
+  treat_missing_data  = var.cpu_memory_down_treat_missing_data
   alarm_actions       = [aws_appautoscaling_policy.scale_down_policy[0].arn]
 
   dimensions = {
@@ -340,7 +348,7 @@ resource "aws_cloudwatch_metric_alarm" "sqs_high" {
   datapoints_to_alarm = var.sqs_up_datapoints_to_alarm
   threshold           = var.sqs_visible_up_threshold
   alarm_description   = "Alarm when SQS messages exceed threshold for ${local.name}"
-  treat_missing_data  = "missing"
+  treat_missing_data  = var.sqs_up_treat_missing_data
 
   metric_query {
     id          = "sqs_messages"
@@ -374,7 +382,7 @@ resource "aws_cloudwatch_metric_alarm" "sqs_low" {
   datapoints_to_alarm = var.sqs_down_datapoints_to_alarm
   threshold           = var.sqs_visible_down_threshold
   alarm_description   = "Alarm when SQS messages are below threshold for ${local.name}"
-  treat_missing_data  = "missing"
+  treat_missing_data  = var.sqs_down_treat_missing_data
 
   metric_query {
     id          = "sqs_messages"
@@ -628,6 +636,7 @@ resource "aws_cloudwatch_metric_alarm" "custom_metric_high" {
   alarm_description   = "This alarm monitors ${local.name} ${each.value.scale_up.metric_name} for scaling up"
   comparison_operator = each.value.scale_up.comparison_operator
   evaluation_periods  = each.value.scale_up.evaluation_periods
+  datapoints_to_alarm = each.value.scale_up.datapoints_to_alarm
   metric_name         = each.value.scale_up.metric_name
   namespace           = each.value.scale_up.namespace
   period              = each.value.scale_up.period
@@ -651,6 +660,7 @@ resource "aws_cloudwatch_metric_alarm" "custom_metric_low" {
   alarm_description   = "This alarm monitors ${local.name} ${each.value.scale_down.metric_name} for scaling down"
   comparison_operator = each.value.scale_down.comparison_operator
   evaluation_periods  = each.value.scale_down.evaluation_periods
+  datapoints_to_alarm = each.value.scale_down.datapoints_to_alarm
   metric_name         = each.value.scale_down.metric_name
   namespace           = each.value.scale_down.namespace
   period              = each.value.scale_down.period

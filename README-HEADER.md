@@ -127,7 +127,7 @@ See [the cdn-only example](/examples/cdn-only) for a service that rejects on bot
 
 With `scaling_approach = "sqs"`, the service scales on an SQS queue's metrics. The scale-up and scale-down alarms are configured independently, because a queue-backed worker usually needs asymmetric signals: scale up as soon as work arrives, but scale down only once nothing is still in flight.
 
-`sqs_metric_name` sets the metric for both alarms. Override either side with `sqs_up_metric_name` / `sqs_down_metric_name`, and tune each alarm with the matching `sqs_up_*` / `sqs_down_*` variable for statistic, comparison operator, evaluation periods and datapoints to alarm.
+`sqs_metric_name` sets the metric for both alarms. Override either side with `sqs_up_metric_name` / `sqs_down_metric_name`, and tune each alarm with the matching `sqs_up_*` / `sqs_down_*` variable for statistic, comparison operator, evaluation periods, datapoints to alarm and treat missing data. SQS can stop publishing metrics for a queue that has been idle for hours; set `sqs_down_treat_missing_data = "breaching"` so that an idle worker can still scale down.
 
 A worker that must not be scaled down while messages are in flight, for instance, scales up on `ApproximateNumberOfMessagesVisible` and down on `ApproximateNumberOfMessagesNotVisible`:
 
@@ -211,6 +211,8 @@ additional_scale_up_alarms = [{
 The steps in `scale_up_steps` are measured from the threshold of whichever alarm fired, in that alarm's units. An extra alarm on a metric that runs in the thousands breaches by thousands, and so jumps straight to the last step of bounds sized for CPU points or `RequestCountPerTarget`. To make its breaches comparable, scale such a metric with a math expression: set `return_data = false` on `upstream_requests` and add a returning query with `expression = "upstream_requests / 100"`.
 
 Extra alarms only trigger scale-up; they do not hold back scale-down. During an upstream surge that has not yet reached this service, the service's own metric is still low, and scaling up early lowers it further, so the scale-down alarm can be in ALARM at the same time as the extra alarm. The service then scales up every `scale_up_cooldown` and back down every `scale_down_cooldown` for as long as both alarms fire. To avoid that, make scale-down deliberately slow when using extra alarms: a conservative scale-down threshold, scale-down datapoints to alarm equal to the evaluation periods, and a `scale_down_cooldown` longer than the time the surge takes to reach this service.
+
+The `step_scaling` CPU and memory alarms take `cpu_memory_up_datapoints_to_alarm` / `cpu_memory_down_datapoints_to_alarm` (out of `scaling_evaluation_periods`; all of them when unset) and `cpu_memory_up_treat_missing_data` / `cpu_memory_down_treat_missing_data`. Each `custom_metric_step_scaling` entry takes `datapoints_to_alarm` in its `scale_up` and `scale_down` objects.
 
 ## Adding This Version of the Module
 
