@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.3
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.3"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.3"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -75,7 +75,7 @@ By default the service runs on the `launch_type` given (`FARGATE` unless overrid
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.3"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -150,7 +150,7 @@ sqs_down_datapoints_to_alarm = 2
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`12.0.3`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -312,6 +312,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_enable_circuit_breaker"></a> [enable\_circuit\_breaker](#input\_enable\_circuit\_breaker) | Enables ECS circuit breaker | `bool` | `true` | no |
 | <a name="input_enable_circuit_breaker_rollback"></a> [enable\_circuit\_breaker\_rollback](#input\_enable\_circuit\_breaker\_rollback) | Enables ECS circuit breaker rollback | `bool` | `true` | no |
 | <a name="input_enable_cross_zone_load_balancing"></a> [enable\_cross\_zone\_load\_balancing](#input\_enable\_cross\_zone\_load\_balancing) | Enable cross-zone load balancing for NLBs. ALB have this enabled by default and cannot be disabled. | `string` | `true` | no |
+| <a name="input_enable_deletion_protection"></a> [enable\_deletion\_protection](#input\_enable\_deletion\_protection) | (optional) Protect the load balancer from deletion. Defaults to `false`, matching what existing<br/>consumers already have in AWS so that adopting this module changes nothing on its own.<br/><br/>A module call cannot set `lifecycle { prevent_destroy }`, so a load balancer adopted into this<br/>module loses whatever Terraform-side guard it had. Setting this to `true` is the provider-native<br/>replacement, and unlike a pipeline check it also stops a delete issued from a local apply or the<br/>console. Worth enabling deliberately for anything serving production traffic. | `bool` | `false` | no |
 | <a name="input_enable_execute_command"></a> [enable\_execute\_command](#input\_enable\_execute\_command) | Enables `ecs exec`. If null, will enable if not on prod | `bool` | `null` | no |
 | <a name="input_entrypoint"></a> [entrypoint](#input\_entrypoint) | (optional) entrypoint to run in the container as an array. e.g. ["sleep", "10"]. If null, does not set an entrypoint in the task definition. | `list(string)` | `null` | no |
 | <a name="input_env_vars"></a> [env\_vars](#input\_env\_vars) | (optional) environment variables to be passed to the container. By default, only passes SSM\_PATH | `set(map(any))` | `null` | no |
@@ -350,9 +351,11 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_lb_deregistration_delay"></a> [lb\_deregistration\_delay](#input\_lb\_deregistration\_delay) | (optional) task deregistration delay for the load balancer | `number` | `300` | no |
 | <a name="input_lb_ingress_cidr_blocks"></a> [lb\_ingress\_cidr\_blocks](#input\_lb\_ingress\_cidr\_blocks) | CIDR blocks allowed to reach the load balancer (HTTP/HTTPS ingress). Defaults to open internet access. | `list(string)` | <pre>[<br/>  "0.0.0.0/0"<br/>]</pre> | no |
 | <a name="input_lb_scheme"></a> [lb\_scheme](#input\_lb\_scheme) | Scheme for the load balancer and subnet selection. "public" creates an internet-facing LB in public subnets. "internal" creates an internal LB in private subnets. | `string` | `"public"` | no |
+| <a name="input_listener_default_message_body"></a> [listener\_default\_message\_body](#input\_listener\_default\_message\_body) | (optional) Body returned with the listeners' default fixed response. Null sends an empty body. | `string` | `null` | no |
 | <a name="input_listener_default_status_code"></a> [listener\_default\_status\_code](#input\_listener\_default\_status\_code) | (optional) HTTP status code returned by the default `fixed-response` action of the HTTP and HTTPS listeners. Requests that match no listener rule get this. Set it to match an existing listener you are adopting, since a differing status code is an in-place listener update that briefly changes what unmatched requests receive. | `string` | `"403"` | no |
 | <a name="input_listener_rule_host_header"></a> [listener\_rule\_host\_header](#input\_listener\_rule\_host\_header) | (optional) Match the service's aliases with a `host_header` condition on the application listener rules. Set to false to route on `custom_http_headers` alone — for a service reachable only through a CDN that injects a shared secret header, say, where the host header varies. With this false a single rule is created per listener instead of one per alias, and `custom_http_headers` must be non-empty because a listener rule needs at least one condition. | `bool` | `true` | no |
 | <a name="input_load_balancer_name"></a> [load\_balancer\_name](#input\_load\_balancer\_name) | Load balancer name. Will default to product if not defined. | `string` | `null` | no |
+| <a name="input_load_balancer_sg_description"></a> [load\_balancer\_sg\_description](#input\_load\_balancer\_sg\_description) | (optional) Description for the load balancer security group. Defaults to<br/>`Controls access to <name> load balancer`.<br/><br/>`description` is ForceNew on aws\_security\_group, so adopting a security group that already exists<br/>under a different description replaces it -- and replacing a load balancer's security group is<br/>not something to do by accident. Set this to the existing description to adopt the group in place. | `string` | `null` | no |
 | <a name="input_load_balancer_sg_name"></a> [load\_balancer\_sg\_name](#input\_load\_balancer\_sg\_name) | Name of the load balancer security group. Used as a prefix unless `use_sg_name_prefix` is false. If null, will use `${local.load_balancer_name}-sg-` (prefix) or `${local.load_balancer_name}-sg` (exact name). | `string` | `null` | no |
 | <a name="input_load_balancer_type"></a> [load\_balancer\_type](#input\_load\_balancer\_type) | Type of load balancer to use. application, network or gateway. | `string` | `"application"` | no |
 | <a name="input_log_group_class"></a> [log\_group\_class](#input\_log\_group\_class) | (Optional) log class of the log group. Possible values are: STANDARD or INFREQUENT\_ACCESS | `string` | `"INFREQUENT_ACCESS"` | no |
@@ -451,6 +454,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="output_iam_task_role_arn"></a> [iam\_task\_role\_arn](#output\_iam\_task\_role\_arn) | IAM role ARN associated with a task defition, if task defition is created by the ecs service module |
 | <a name="output_image_tag"></a> [image\_tag](#output\_image\_tag) | Tag of the image used by this service |
 | <a name="output_lb_arn"></a> [lb\_arn](#output\_lb\_arn) | Load balancer ARN |
+| <a name="output_lb_arn_suffix"></a> [lb\_arn\_suffix](#output\_lb\_arn\_suffix) | ARN suffix of the load balancer, in the form CloudWatch's LoadBalancer dimension expects |
 | <a name="output_lb_dns_name"></a> [lb\_dns\_name](#output\_lb\_dns\_name) | Load balancer DNS Name |
 | <a name="output_lb_sg"></a> [lb\_sg](#output\_lb\_sg) | Load balancer security group |
 | <a name="output_lb_zone_id"></a> [lb\_zone\_id](#output\_lb\_zone\_id) | Load balancer Zone Id |
@@ -458,5 +462,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="output_service_id"></a> [service\_id](#output\_service\_id) | CloudMap Service ID |
 | <a name="output_service_sg"></a> [service\_sg](#output\_service\_sg) | Service security group |
 | <a name="output_subnets"></a> [subnets](#output\_subnets) | Subnets used by this service |
+| <a name="output_target_group_arn"></a> [target\_group\_arn](#output\_target\_group\_arn) | ARN of the target group, if this module created one |
+| <a name="output_target_group_arn_suffix"></a> [target\_group\_arn\_suffix](#output\_target\_group\_arn\_suffix) | ARN suffix of the target group, in the form CloudWatch's TargetGroup dimension expects |
 | <a name="output_task_def_arn"></a> [task\_def\_arn](#output\_task\_def\_arn) | Current task definition ARN used by this service |
 | <a name="output_task_family"></a> [task\_family](#output\_task\_family) | Current task family used by this service |
