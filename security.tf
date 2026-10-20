@@ -1,6 +1,6 @@
 resource "aws_security_group" "lb_sg" {
   count       = local.create_lb ? 1 : 0
-  description = "Controls access to the ${local.name} load balancer"
+  description = local.load_balancer_sg_description
 
   vpc_id      = local.vpc_id
   name        = local.load_balancer_sg_name

@@ -292,6 +292,20 @@ variable "target_group_name" {
   type        = string
 }
 
+variable "enable_deletion_protection" {
+  description = <<EOT
+(optional) Protect the load balancer from deletion. Defaults to `false`, matching what existing
+consumers already have in AWS so that adopting this module changes nothing on its own.
+
+A module call cannot set `lifecycle { prevent_destroy }`, so a load balancer adopted into this
+module loses whatever Terraform-side guard it had. Setting this to `true` is the provider-native
+replacement, and unlike a pipeline check it also stops a delete issued from a local apply or the
+console. Worth enabling deliberately for anything serving production traffic.
+EOT
+  default     = false
+  type        = bool
+}
+
 variable "load_balancer_name" {
   description = "Load balancer name. Will default to product if not defined."
   default     = null
@@ -416,6 +430,12 @@ EOT
     condition     = var.http_listener_action == null || contains(["redirect", "forward", "fixed_response"], coalesce(var.http_listener_action, "redirect"))
     error_message = "The http_listener_action must be `redirect`, `forward` or `fixed_response`."
   }
+}
+
+variable "listener_default_message_body" {
+  description = "(optional) Body returned with the listeners' default fixed response. Null sends an empty body."
+  default     = null
+  type        = string
 }
 
 variable "listener_default_status_code" {
@@ -550,6 +570,19 @@ variable "idle_timeout" {
   description = "Idle timeout for the load balancer. If null, will use whatever the default is for the load balancer type."
   default     = null
   type        = number
+}
+
+variable "load_balancer_sg_description" {
+  description = <<EOT
+(optional) Description for the load balancer security group. Defaults to
+`Controls access to <name> load balancer`.
+
+`description` is ForceNew on aws_security_group, so adopting a security group that already exists
+under a different description replaces it -- and replacing a load balancer's security group is
+not something to do by accident. Set this to the existing description to adopt the group in place.
+EOT
+  default     = null
+  type        = string
 }
 
 variable "load_balancer_sg_name" {
