@@ -115,6 +115,8 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   period              = var.scaling_evaluation_period
   statistic           = "Average"
   threshold           = var.scale_up_cpu_threshold
+  datapoints_to_alarm = var.cpu_memory_up_datapoints_to_alarm
+  treat_missing_data  = var.cpu_memory_up_treat_missing_data
   alarm_actions       = [aws_appautoscaling_policy.scale_up_policy[0].arn]
 
   dimensions = {
@@ -139,6 +141,8 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
   period              = var.scaling_evaluation_period
   statistic           = "Average"
   threshold           = var.scale_up_memory_threshold
+  datapoints_to_alarm = var.cpu_memory_up_datapoints_to_alarm
+  treat_missing_data  = var.cpu_memory_up_treat_missing_data
   alarm_actions       = [aws_appautoscaling_policy.scale_up_policy[0].arn]
 
   dimensions = {
@@ -163,6 +167,8 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
   period              = var.scaling_evaluation_period
   statistic           = "Average"
   threshold           = var.scale_down_cpu_threshold
+  datapoints_to_alarm = var.cpu_memory_down_datapoints_to_alarm
+  treat_missing_data  = var.cpu_memory_down_treat_missing_data
   alarm_actions       = [aws_appautoscaling_policy.scale_down_policy[0].arn]
 
   dimensions = {
@@ -187,6 +193,8 @@ resource "aws_cloudwatch_metric_alarm" "memory_low" {
   period              = var.scaling_evaluation_period
   statistic           = "Average"
   threshold           = var.scale_down_memory_threshold
+  datapoints_to_alarm = var.cpu_memory_down_datapoints_to_alarm
+  treat_missing_data  = var.cpu_memory_down_treat_missing_data
   alarm_actions       = [aws_appautoscaling_policy.scale_down_policy[0].arn]
 
   dimensions = {
@@ -344,7 +352,7 @@ resource "aws_cloudwatch_metric_alarm" "sqs_high" {
   datapoints_to_alarm = var.sqs_up_datapoints_to_alarm
   threshold           = var.sqs_visible_up_threshold
   alarm_description   = "Alarm when SQS messages exceed threshold for ${local.name}"
-  treat_missing_data  = "missing"
+  treat_missing_data  = var.sqs_up_treat_missing_data
 
   metric_query {
     id          = "sqs_messages"
@@ -381,7 +389,7 @@ resource "aws_cloudwatch_metric_alarm" "sqs_low" {
   datapoints_to_alarm = var.sqs_down_datapoints_to_alarm
   threshold           = var.sqs_visible_down_threshold
   alarm_description   = "Alarm when SQS messages are below threshold for ${local.name}"
-  treat_missing_data  = "missing"
+  treat_missing_data  = var.sqs_down_treat_missing_data
 
   metric_query {
     id          = "sqs_messages"
@@ -457,15 +465,16 @@ resource "aws_appautoscaling_policy" "request_count_scale_down_policy" {
 resource "aws_cloudwatch_metric_alarm" "request_count_high" {
   count               = var.scaling_approach == "request_count" ? 1 : 0
   alarm_name          = var.alb_alarm_high_name != null ? var.alb_alarm_high_name : "${local.name}-request-count-high"
-  alarm_description   = "Scale up ${local.name} based on ALB RequestCountPerTarget"
+  alarm_description   = "Scale up ${local.name} based on ALB ${var.alb_metric_name}"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = var.scaling_evaluation_periods
-  metric_name         = "RequestCountPerTarget"
+  metric_name         = var.alb_metric_name
   namespace           = "AWS/ApplicationELB"
   period              = var.scaling_evaluation_period
   statistic           = "Sum"
   threshold           = var.alb_scale_up_threshold
-  datapoints_to_alarm = 1
+  datapoints_to_alarm = var.alb_up_datapoints_to_alarm
+  treat_missing_data  = var.alb_up_treat_missing_data
 
   dimensions = {
     TargetGroup  = replace(local.alb_scaling_tg_arn, "/arn:.*?:targetgroup\\/(.*)/", "targetgroup/$1")
@@ -484,15 +493,16 @@ resource "aws_cloudwatch_metric_alarm" "request_count_high" {
 resource "aws_cloudwatch_metric_alarm" "request_count_low" {
   count               = var.scaling_approach == "request_count" ? 1 : 0
   alarm_name          = var.alb_alarm_low_name != null ? var.alb_alarm_low_name : "${local.name}-request-count-low"
-  alarm_description   = "Scale down ${local.name} based on ALB RequestCountPerTarget"
+  alarm_description   = "Scale down ${local.name} based on ALB ${var.alb_metric_name}"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = var.scaling_evaluation_periods
-  metric_name         = "RequestCountPerTarget"
+  metric_name         = var.alb_metric_name
   namespace           = "AWS/ApplicationELB"
   period              = var.scaling_evaluation_period
   statistic           = "Sum"
   threshold           = var.alb_scale_down_threshold
-  datapoints_to_alarm = 1
+  datapoints_to_alarm = var.alb_down_datapoints_to_alarm
+  treat_missing_data  = var.alb_down_treat_missing_data
 
   dimensions = {
     TargetGroup  = replace(local.alb_scaling_tg_arn, "/arn:.*?:targetgroup\\/(.*)/", "targetgroup/$1")
@@ -636,6 +646,7 @@ resource "aws_cloudwatch_metric_alarm" "custom_metric_high" {
   alarm_description   = "This alarm monitors ${local.name} ${each.value.scale_up.metric_name} for scaling up"
   comparison_operator = each.value.scale_up.comparison_operator
   evaluation_periods  = each.value.scale_up.evaluation_periods
+  datapoints_to_alarm = each.value.scale_up.datapoints_to_alarm
   metric_name         = each.value.scale_up.metric_name
   namespace           = each.value.scale_up.namespace
   period              = each.value.scale_up.period
@@ -659,6 +670,7 @@ resource "aws_cloudwatch_metric_alarm" "custom_metric_low" {
   alarm_description   = "This alarm monitors ${local.name} ${each.value.scale_down.metric_name} for scaling down"
   comparison_operator = each.value.scale_down.comparison_operator
   evaluation_periods  = each.value.scale_down.evaluation_periods
+  datapoints_to_alarm = each.value.scale_down.datapoints_to_alarm
   metric_name         = each.value.scale_down.metric_name
   namespace           = each.value.scale_down.namespace
   period              = each.value.scale_down.period

@@ -127,7 +127,7 @@ See [the cdn-only example](/examples/cdn-only) for a service that rejects on bot
 
 With `scaling_approach = "sqs"`, the service scales on an SQS queue's metrics. The scale-up and scale-down alarms are configured independently, because a queue-backed worker usually needs asymmetric signals: scale up as soon as work arrives, but scale down only once nothing is still in flight.
 
-`sqs_metric_name` sets the metric for both alarms. Override either side with `sqs_up_metric_name` / `sqs_down_metric_name`, and tune each alarm with the matching `sqs_up_*` / `sqs_down_*` variable for statistic, comparison operator, evaluation periods and datapoints to alarm.
+`sqs_metric_name` sets the metric for both alarms. Override either side with `sqs_up_metric_name` / `sqs_down_metric_name`, and tune each alarm with the matching `sqs_up_*` / `sqs_down_*` variable for statistic, comparison operator, evaluation periods, datapoints to alarm and treat missing data. SQS can stop publishing metrics for a queue that has been idle for hours; set `sqs_down_treat_missing_data = "breaching"` so that an idle worker can still scale down.
 
 A worker that must not be scaled down while messages are in flight, for instance, scales up on `ApproximateNumberOfMessagesVisible` and down on `ApproximateNumberOfMessagesNotVisible`:
 
@@ -144,6 +144,24 @@ sqs_down_metric_name         = "ApproximateNumberOfMessagesNotVisible"
 sqs_visible_down_threshold   = 5
 sqs_down_evaluation_periods  = 2
 sqs_down_datapoints_to_alarm = 2
+```
+
+### Request Count Scaling
+
+With `scaling_approach = "request_count"`, the service scales on ALB request metrics through step scaling: a high alarm at `alb_scale_up_threshold` and a low alarm at `alb_scale_down_threshold`.
+
+`RequestCountPerTarget` divides requests by the number of healthy tasks, so it drops whenever tasks are added or come up healthy. Set `alb_metric_name = "RequestCount"` to alarm on the target group's total requests instead, which does not depend on the number of healthy tasks, and size both thresholds as totals per `scaling_evaluation_period`. Adding tasks does not lower `RequestCount`. While traffic stays above `alb_scale_up_threshold`, the service keeps adding tasks every `scale_up_cooldown` until it reaches `max_capacity`, and it scales down only once traffic falls below `alb_scale_down_threshold`.
+
+Tune each alarm with `alb_up_datapoints_to_alarm` / `alb_down_datapoints_to_alarm` (out of `scaling_evaluation_periods`) and `alb_up_treat_missing_data` / `alb_down_treat_missing_data`. An ALB publishes no request metrics for a period with no requests. Set `alb_down_treat_missing_data = "breaching"` so that an idle service can still scale down:
+
+```hcl
+alb_metric_name              = "RequestCount"
+alb_scale_up_threshold       = 6000
+alb_scale_down_threshold     = 1500
+scaling_evaluation_periods   = 3
+alb_up_datapoints_to_alarm   = 1
+alb_down_datapoints_to_alarm = 3
+alb_down_treat_missing_data  = "breaching"
 ```
 
 ### Step Scaling Options
@@ -189,6 +207,10 @@ additional_scale_up_alarms = [{
 ```
 
 Extra alarms only trigger scale-up; they do not hold back scale-down. During an upstream surge that has not yet reached this service, the service's own metric is still low, and scaling up early lowers it further, so the scale-down alarm can be in ALARM at the same time as the extra alarm. The service then scales up every `scale_up_cooldown` and back down every `scale_down_cooldown` for as long as both alarms fire. To avoid that, make scale-down deliberately slow when using extra alarms: a conservative scale-down threshold, scale-down datapoints to alarm equal to the evaluation periods, and a `scale_down_cooldown` longer than the time the surge takes to reach this service.
+
+### Alarm Tuning Options
+
+The `step_scaling` CPU and memory alarms take `cpu_memory_up_datapoints_to_alarm` / `cpu_memory_down_datapoints_to_alarm` (out of `scaling_evaluation_periods`; all of them when unset) and `cpu_memory_up_treat_missing_data` / `cpu_memory_down_treat_missing_data`. Each `custom_metric_step_scaling` entry takes `datapoints_to_alarm` in its `scale_up` and `scale_down` objects.
 
 ## Adding This Version of the Module
 
