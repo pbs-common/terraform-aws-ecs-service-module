@@ -146,6 +146,35 @@ sqs_down_evaluation_periods  = 2
 sqs_down_datapoints_to_alarm = 2
 ```
 
+### Step Scaling Options
+
+The step-scaling approaches, `step_scaling` (CPU/memory), `sqs` and `request_count`, share the scale-up inputs below. They are not supported with `requests_count_scaling = true`; use `scaling_approach = "request_count"` instead.
+
+A service's own metrics only rise once traffic reaches it. To scale up earlier, for instance when an upstream service starts receiving more traffic, add alarms with `additional_scale_up_alarms`. Each one triggers the same scale-up policy as the approach's own scale-up alarms. Any alarm firing scales the service up, so extra alarms can make it scale up earlier but never later. Each alarm takes CloudWatch `metric_queries`, metrics or math expressions, and exactly one of them must set `return_data = true`:
+
+```hcl
+additional_scale_up_alarms = [{
+  name                = "upstream"
+  threshold           = 5000
+  evaluation_periods  = 2
+  datapoints_to_alarm = 1
+  metric_queries = [{
+    id          = "upstream_requests"
+    return_data = true
+    metric = {
+      namespace   = "AWS/ApplicationELB"
+      metric_name = "RequestCount"
+      dimensions = {
+        LoadBalancer = "app/upstream-alb/1111111111111111"
+        TargetGroup  = "targetgroup/upstream-tg/2222222222222222"
+      }
+    }
+  }]
+}]
+```
+
+Extra alarms only trigger scale-up; they do not hold back scale-down. During an upstream surge that has not yet reached this service, the service's own metric is still low, and scaling up early lowers it further, so the scale-down alarm can be in ALARM at the same time as the extra alarm. The service then scales up every `scale_up_cooldown` and back down every `scale_down_cooldown` for as long as both alarms fire. To avoid that, make scale-down deliberately slow when using extra alarms: a conservative scale-down threshold, scale-down datapoints to alarm equal to the evaluation periods, and a `scale_down_cooldown` longer than the time the surge takes to reach this service.
+
 ## Adding This Version of the Module
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:

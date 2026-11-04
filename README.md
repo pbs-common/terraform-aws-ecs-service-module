@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -75,7 +75,7 @@ By default the service runs on the `launch_type` given (`FARGATE` unless overrid
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.1"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -146,11 +146,40 @@ sqs_down_evaluation_periods  = 2
 sqs_down_datapoints_to_alarm = 2
 ```
 
+### Step Scaling Options
+
+The step-scaling approaches, `step_scaling` (CPU/memory), `sqs` and `request_count`, share the scale-up inputs below. They are not supported with `requests_count_scaling = true`; use `scaling_approach = "request_count"` instead.
+
+A service's own metrics only rise once traffic reaches it. To scale up earlier, for instance when an upstream service starts receiving more traffic, add alarms with `additional_scale_up_alarms`. Each one triggers the same scale-up policy as the approach's own scale-up alarms. Any alarm firing scales the service up, so extra alarms can make it scale up earlier but never later. Each alarm takes CloudWatch `metric_queries`, metrics or math expressions, and exactly one of them must set `return_data = true`:
+
+```hcl
+additional_scale_up_alarms = [{
+  name                = "upstream"
+  threshold           = 5000
+  evaluation_periods  = 2
+  datapoints_to_alarm = 1
+  metric_queries = [{
+    id          = "upstream_requests"
+    return_data = true
+    metric = {
+      namespace   = "AWS/ApplicationELB"
+      metric_name = "RequestCount"
+      dimensions = {
+        LoadBalancer = "app/upstream-alb/1111111111111111"
+        TargetGroup  = "targetgroup/upstream-tg/2222222222222222"
+      }
+    }
+  }]
+}]
+```
+
+Extra alarms only trigger scale-up; they do not hold back scale-down. During an upstream surge that has not yet reached this service, the service's own metric is still low, and scaling up early lowers it further, so the scale-down alarm can be in ALARM at the same time as the extra alarm. The service then scales up every `scale_up_cooldown` and back down every `scale_down_cooldown` for as long as both alarms fire. To avoid that, make scale-down deliberately slow when using extra alarms: a conservative scale-down threshold, scale-down datapoints to alarm equal to the evaluation periods, and a `scale_down_cooldown` longer than the time the surge takes to reach this service.
+
 ## Adding This Version of the Module
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`12.0.1`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -165,27 +194,27 @@ Below is automatically generated documentation on this Terraform module using [t
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.13.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.0.0 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="provider_aws"></a> [aws](#provider\_aws) | 6.67.0 |
 
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_cluster"></a> [cluster](#module\_cluster) | github.com/pbs-common/terraform-aws-ecs-cluster-module | 2.0.0 |
 | <a name="module_task"></a> [task](#module\_task) | github.com/pbs-common/terraform-aws-ecs-task-definition-module | 3.0.2 |
 
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_appautoscaling_policy.cpu_autoscaling_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.custom_metric_scale_down_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.custom_metric_scale_up_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
@@ -201,6 +230,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | [aws_appautoscaling_policy.sqs_scale_down_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.sqs_scale_up_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_target.autoscaling_target](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_target) | resource |
+| [aws_cloudwatch_metric_alarm.additional_scale_up](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.cpu_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.cpu_low](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.custom_metric_high](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
@@ -257,13 +287,14 @@ Below is automatically generated documentation on this Terraform module using [t
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment (sharedtools, dev, staging, qa, prod) | `string` | n/a | yes |
 | <a name="input_organization"></a> [organization](#input\_organization) | Organization using this module. Used to prefix tags so that they are easily identified as being from your organization | `string` | n/a | yes |
 | <a name="input_owner"></a> [owner](#input\_owner) | Tag used to group resources according to product | `string` | n/a | yes |
 | <a name="input_product"></a> [product](#input\_product) | Tag used to group resources according to product | `string` | n/a | yes |
 | <a name="input_repo"></a> [repo](#input\_repo) | Tag used to point to the repo using this module | `string` | n/a | yes |
 | <a name="input_acm_arn"></a> [acm\_arn](#input\_acm\_arn) | ARN of the ACM certificate to use for the service. If null, one will be guessed based on the primary hosted zone of the service. | `string` | `null` | no |
+| <a name="input_additional_scale_up_alarms"></a> [additional\_scale\_up\_alarms](#input\_additional\_scale\_up\_alarms) | (optional) Extra CloudWatch alarms that trigger the scale-up policy of `scaling_approach` `step_scaling` (CPU/memory), `sqs` or `request_count`, alongside that approach's own scale-up alarms. Any one of them firing scales the service up, so they can make it scale up earlier but never later. Each alarm fires when the one `metric_queries` entry with `return_data = true` is at or above `threshold`, and is named `<name>-<alarm name>-scale-up`. Not supported with `requests_count_scaling = true`. | <pre>list(object({<br/>    name                = string<br/>    threshold           = number<br/>    evaluation_periods  = optional(number, 1)<br/>    datapoints_to_alarm = optional(number)<br/>    treat_missing_data  = optional(string, "missing")<br/>    metric_queries = list(object({<br/>      id          = string<br/>      expression  = optional(string)<br/>      label       = optional(string)<br/>      return_data = optional(bool, false)<br/>      metric = optional(object({<br/>        namespace   = string<br/>        metric_name = string<br/>        period      = optional(number, 60)<br/>        stat        = optional(string, "Sum")<br/>        unit        = optional(string)<br/>        dimensions  = optional(map(string), {})<br/>      }))<br/>    }))<br/>  }))</pre> | `[]` | no |
 | <a name="input_alb_alarm_high_name"></a> [alb\_alarm\_high\_name](#input\_alb\_alarm\_high\_name) | Override name for the ALB scale-up CloudWatch alarm. Defaults to `${local.name}-request-count-high`. | `string` | `null` | no |
 | <a name="input_alb_alarm_low_name"></a> [alb\_alarm\_low\_name](#input\_alb\_alarm\_low\_name) | Override name for the ALB scale-down CloudWatch alarm. Defaults to `${local.name}-request-count-low`. | `string` | `null` | no |
 | <a name="input_alb_arn"></a> [alb\_arn](#input\_alb\_arn) | ARN of the ALB used for ALB-based scaling. Required when `scaling_approach` is `request_count` and `create_lb` is false. When `create_lb` is true the module's own ALB is used automatically. | `string` | `null` | no |
@@ -437,7 +468,7 @@ Below is automatically generated documentation on this Terraform module using [t
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_arn"></a> [arn](#output\_arn) | ARN of the service |
 | <a name="output_cluster"></a> [cluster](#output\_cluster) | Cluster this service is associated with |
 | <a name="output_container_name"></a> [container\_name](#output\_container\_name) | Name of the main container used by this service |

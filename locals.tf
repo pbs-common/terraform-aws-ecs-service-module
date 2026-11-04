@@ -190,6 +190,14 @@ locals {
   # ALB scaling: prefer explicit vars; fall back to the module's own LB/TG when create_lb = true
   alb_scaling_arn    = var.alb_arn != null ? var.alb_arn : try(aws_lb.lb[0].arn, "")
   alb_scaling_tg_arn = var.alb_target_group_arn != null ? var.alb_target_group_arn : try(aws_lb_target_group.target_group[0].arn, "")
+
+  # step_scaling (CPU/memory), sqs and request_count each create one step scale-up policy, and never
+  # more than one at a time; additional_scale_up_alarms feed whichever exists.
+  step_scale_up_policy_arn = one(concat(
+    aws_appautoscaling_policy.scale_up_policy[*].arn,
+    aws_appautoscaling_policy.sqs_scale_up_policy[*].arn,
+    aws_appautoscaling_policy.request_count_scale_up_policy[*].arn,
+  ))
 }
 
 data "aws_default_tags" "common_tags" {}
