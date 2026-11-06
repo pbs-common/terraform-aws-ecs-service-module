@@ -916,6 +916,32 @@ variable "alb_scale_down_policy_name" {
   type        = string
 }
 
+variable "scale_up_steps" {
+  description = "(optional) Step adjustments for the scale-up policy of `scaling_approach` `step_scaling` (CPU/memory), `sqs` or `request_count`, so a bigger breach adds more tasks. Bounds are offsets from the threshold of the alarm that fired, in that alarm's metric units, not percentages. Steps must be in ascending order, start at `lower_bound = 0`, be contiguous, and the last one must leave `upper_bound` unset. Adjustments must be positive. Defaults to one step adding `scale_up_adjustment` tasks. Not supported with `requests_count_scaling = true`."
+  default     = null
+  type = list(object({
+    lower_bound = number
+    upper_bound = optional(number)
+    adjustment  = number
+  }))
+  validation {
+    condition     = var.scale_up_steps == null || contains(["request_count", "sqs"], var.scaling_approach) || (var.scaling_approach == "step_scaling" && var.requests_count_scaling == false)
+    error_message = "The scale_up_steps are only used when scaling_approach is step_scaling (without requests_count_scaling), sqs or request_count."
+  }
+  validation {
+    condition     = var.scale_up_steps == null ? true : length(var.scale_up_steps) == 0 ? true : var.scale_up_steps[0].lower_bound == 0
+    error_message = "The first of scale_up_steps must have lower_bound = 0, or a breach smaller than that bound adds no tasks."
+  }
+  validation {
+    condition     = var.scale_up_steps == null ? true : length(var.scale_up_steps) == 0 ? true : var.scale_up_steps[length(var.scale_up_steps) - 1].upper_bound == null
+    error_message = "The last of scale_up_steps must leave upper_bound unset, or a breach above it adds no tasks."
+  }
+  validation {
+    condition     = var.scale_up_steps == null ? true : alltrue([for s in var.scale_up_steps : s.adjustment > 0])
+    error_message = "Each of scale_up_steps must have a positive adjustment."
+  }
+}
+
 # ── Custom-metric based scaling (scaling_approach = "custom_metric_target_tracking" or "custom_metric_step_scaling") ────
 
 variable "custom_metric_target_tracking_scaling" {

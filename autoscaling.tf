@@ -72,9 +72,13 @@ resource "aws_appautoscaling_policy" "scale_up_policy" {
     cooldown                = var.scale_up_cooldown
     metric_aggregation_type = var.metric_aggregation_type
 
-    step_adjustment {
-      metric_interval_lower_bound = 0
-      scaling_adjustment          = var.scale_up_adjustment
+    dynamic "step_adjustment" {
+      for_each = local.scale_up_steps
+      content {
+        metric_interval_lower_bound = step_adjustment.value.lower_bound
+        metric_interval_upper_bound = step_adjustment.value.upper_bound
+        scaling_adjustment          = step_adjustment.value.adjustment
+      }
     }
   }
 }
@@ -298,9 +302,13 @@ resource "aws_appautoscaling_policy" "sqs_scale_up_policy" {
     cooldown                = var.scale_up_cooldown
     metric_aggregation_type = var.metric_aggregation_type
 
-    step_adjustment {
-      metric_interval_lower_bound = 0
-      scaling_adjustment          = var.scale_up_adjustment
+    dynamic "step_adjustment" {
+      for_each = local.scale_up_steps
+      content {
+        metric_interval_lower_bound = step_adjustment.value.lower_bound
+        metric_interval_upper_bound = step_adjustment.value.upper_bound
+        scaling_adjustment          = step_adjustment.value.adjustment
+      }
     }
   }
 }
@@ -416,9 +424,13 @@ resource "aws_appautoscaling_policy" "request_count_scale_up_policy" {
     cooldown                = var.scale_up_cooldown
     metric_aggregation_type = var.metric_aggregation_type
 
-    step_adjustment {
-      metric_interval_lower_bound = 0
-      scaling_adjustment          = var.scale_up_adjustment
+    dynamic "step_adjustment" {
+      for_each = local.scale_up_steps
+      content {
+        metric_interval_lower_bound = step_adjustment.value.lower_bound
+        metric_interval_upper_bound = step_adjustment.value.upper_bound
+        scaling_adjustment          = step_adjustment.value.adjustment
+      }
     }
   }
 }
