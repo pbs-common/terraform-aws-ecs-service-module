@@ -150,6 +150,21 @@ sqs_down_datapoints_to_alarm = 2
 
 The step-scaling approaches, `step_scaling` (CPU/memory), `sqs` and `request_count`, share the scale-up inputs below. They are not supported with `requests_count_scaling = true`; use `scaling_approach = "request_count"` instead.
 
+By default every scale-up adds `scale_up_adjustment` tasks, however large the breach. Set `scale_up_steps` to add more tasks for a bigger breach. Bounds are offsets from the threshold in the metric's own units, not percentages: percentage points of CPU or memory for `step_scaling`, messages for `sqs`, and requests for `request_count`. Steps must start at `0`, be contiguous, and leave `upper_bound` unset on the last one. With `request_count` and the default threshold of 140, this adds 1 task up to 50% over the threshold, 2 tasks up to 100% over, and 4 tasks beyond that:
+
+```hcl
+scaling_approach       = "request_count"
+alb_scale_up_threshold = 140
+
+scale_up_steps = [
+  { lower_bound = 0, upper_bound = 70, adjustment = 1 },
+  { lower_bound = 70, upper_bound = 140, adjustment = 2 },
+  { lower_bound = 140, adjustment = 4 },
+]
+```
+
+Size adjustments to the service's normal task count: a step that doubles a 2-task service is a modest jump for a 20-task one. However large a step is, the service never grows beyond `max_capacity`.
+
 A service's own metrics only rise once traffic reaches it. To scale up earlier, for instance when an upstream service starts receiving more traffic, add alarms with `additional_scale_up_alarms`. Each one triggers the same scale-up policy as the approach's own scale-up alarms. Any alarm firing scales the service up, so extra alarms can make it scale up earlier but never later. Each alarm takes CloudWatch `metric_queries`, metrics or math expressions, and exactly one of them must set `return_data = true`:
 
 ```hcl

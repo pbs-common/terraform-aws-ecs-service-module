@@ -70,11 +70,15 @@ resource "aws_appautoscaling_policy" "scale_up_policy" {
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown                = var.scale_up_cooldown
-    metric_aggregation_type = "Average"
+    metric_aggregation_type = var.metric_aggregation_type
 
-    step_adjustment {
-      metric_interval_lower_bound = 0
-      scaling_adjustment          = var.scale_up_adjustment
+    dynamic "step_adjustment" {
+      for_each = local.scale_up_steps
+      content {
+        metric_interval_lower_bound = step_adjustment.value.lower_bound
+        metric_interval_upper_bound = step_adjustment.value.upper_bound
+        scaling_adjustment          = step_adjustment.value.adjustment
+      }
     }
   }
 }
@@ -90,7 +94,7 @@ resource "aws_appautoscaling_policy" "scale_down_policy" {
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown                = var.scale_down_cooldown
-    metric_aggregation_type = "Average"
+    metric_aggregation_type = var.metric_aggregation_type
 
     step_adjustment {
       metric_interval_upper_bound = 0
@@ -255,7 +259,7 @@ resource "aws_appautoscaling_policy" "requests_count_scale_up_policy" {
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown                = var.scale_up_cooldown
-    metric_aggregation_type = "Average"
+    metric_aggregation_type = var.metric_aggregation_type
 
     step_adjustment {
       metric_interval_lower_bound = 0
@@ -275,7 +279,7 @@ resource "aws_appautoscaling_policy" "requests_count_scale_down_policy" {
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown                = var.scale_down_cooldown
-    metric_aggregation_type = "Average"
+    metric_aggregation_type = var.metric_aggregation_type
 
     step_adjustment {
       metric_interval_upper_bound = 0
@@ -296,11 +300,15 @@ resource "aws_appautoscaling_policy" "sqs_scale_up_policy" {
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown                = var.scale_up_cooldown
-    metric_aggregation_type = "Average"
+    metric_aggregation_type = var.metric_aggregation_type
 
-    step_adjustment {
-      metric_interval_lower_bound = 0
-      scaling_adjustment          = var.scale_up_adjustment
+    dynamic "step_adjustment" {
+      for_each = local.scale_up_steps
+      content {
+        metric_interval_lower_bound = step_adjustment.value.lower_bound
+        metric_interval_upper_bound = step_adjustment.value.upper_bound
+        scaling_adjustment          = step_adjustment.value.adjustment
+      }
     }
   }
 }
@@ -315,10 +323,14 @@ resource "aws_appautoscaling_policy" "sqs_scale_down_policy" {
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown                = var.scale_down_cooldown
-    metric_aggregation_type = "Average"
+    metric_aggregation_type = var.metric_aggregation_type
 
+    # Exactly one bound is set. See sqs_scale_down_step_bound for why the choice matters: the
+    # lower bound is inclusive and the upper bound is exclusive, so an alarm that settles exactly
+    # on its threshold only matches the lower-bounded interval.
     step_adjustment {
-      metric_interval_upper_bound = 0
+      metric_interval_lower_bound = var.sqs_scale_down_step_bound == "lower" ? 0 : null
+      metric_interval_upper_bound = var.sqs_scale_down_step_bound == "upper" ? 0 : null
       scaling_adjustment          = var.scale_down_adjustment
     }
   }
@@ -337,7 +349,10 @@ resource "aws_cloudwatch_metric_alarm" "sqs_high" {
   metric_query {
     id          = "sqs_messages"
     return_data = true
-    label       = "SQS Messages"
+    # The console renders this label in place of the metric name in the scaling condition, so a
+    # fixed string makes the scale-up and scale-down alarms indistinguishable there even when
+    # they watch different metrics. Display only -- it has no effect on evaluation.
+    label = local.sqs_up_metric_name
     metric {
       namespace   = "AWS/SQS"
       metric_name = local.sqs_up_metric_name
@@ -371,7 +386,10 @@ resource "aws_cloudwatch_metric_alarm" "sqs_low" {
   metric_query {
     id          = "sqs_messages"
     return_data = true
-    label       = "SQS Messages"
+    # The console renders this label in place of the metric name in the scaling condition, so a
+    # fixed string makes the scale-up and scale-down alarms indistinguishable there even when
+    # they watch different metrics. Display only -- it has no effect on evaluation.
+    label = local.sqs_down_metric_name
     metric {
       namespace   = "AWS/SQS"
       metric_name = local.sqs_down_metric_name
@@ -404,11 +422,15 @@ resource "aws_appautoscaling_policy" "request_count_scale_up_policy" {
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown                = var.scale_up_cooldown
-    metric_aggregation_type = "Average"
+    metric_aggregation_type = var.metric_aggregation_type
 
-    step_adjustment {
-      metric_interval_lower_bound = 0
-      scaling_adjustment          = var.scale_up_adjustment
+    dynamic "step_adjustment" {
+      for_each = local.scale_up_steps
+      content {
+        metric_interval_lower_bound = step_adjustment.value.lower_bound
+        metric_interval_upper_bound = step_adjustment.value.upper_bound
+        scaling_adjustment          = step_adjustment.value.adjustment
+      }
     }
   }
 }
@@ -423,7 +445,7 @@ resource "aws_appautoscaling_policy" "request_count_scale_down_policy" {
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown                = var.scale_down_cooldown
-    metric_aggregation_type = "Average"
+    metric_aggregation_type = var.metric_aggregation_type
 
     step_adjustment {
       metric_interval_upper_bound = 0
@@ -577,7 +599,7 @@ resource "aws_appautoscaling_policy" "custom_metric_scale_up_policy" {
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown                = each.value.scale_up.cooldown
-    metric_aggregation_type = "Average"
+    metric_aggregation_type = var.metric_aggregation_type
 
     step_adjustment {
       metric_interval_lower_bound = each.value.scale_up.lower_bound
@@ -597,7 +619,7 @@ resource "aws_appautoscaling_policy" "custom_metric_scale_down_policy" {
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
     cooldown                = each.value.scale_down.cooldown
-    metric_aggregation_type = "Average"
+    metric_aggregation_type = var.metric_aggregation_type
 
     step_adjustment {
       metric_interval_upper_bound = each.value.scale_down.upper_bound

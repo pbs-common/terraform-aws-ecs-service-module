@@ -78,6 +78,100 @@ run "legacy_requests_count_scaling_rejects_additional_alarms" {
   expect_failures = [var.additional_scale_up_alarms]
 }
 
+# ── Scale-up steps ───────────────────────────────────────────────────────────
+
+# step_adjustment is a set and its bounds are strings in the provider schema, so steps are
+# compared as "lower..upper:adjustment" strings.
+run "sqs_default_scale_up_is_single_step" {
+  command = plan
+
+  assert {
+    condition = toset([
+      for s in aws_appautoscaling_policy.sqs_scale_up_policy[0].step_scaling_policy_configuration[0].step_adjustment :
+      "${s.metric_interval_lower_bound}..${s.metric_interval_upper_bound == null ? "inf" : s.metric_interval_upper_bound}:${s.scaling_adjustment}"
+    ]) == toset(["0..inf:2"])
+    error_message = "Without scale_up_steps the SQS policy must keep one step of scale_up_adjustment tasks from lower bound 0."
+  }
+}
+
+run "sqs_steps_render" {
+  command = plan
+
+  variables {
+    scale_up_steps = [
+      { lower_bound = 0, upper_bound = 100, adjustment = 1 },
+      { lower_bound = 100, adjustment = 3 },
+    ]
+  }
+
+  assert {
+    condition = toset([
+      for s in aws_appautoscaling_policy.sqs_scale_up_policy[0].step_scaling_policy_configuration[0].step_adjustment :
+      "${s.metric_interval_lower_bound}..${s.metric_interval_upper_bound == null ? "inf" : s.metric_interval_upper_bound}:${s.scaling_adjustment}"
+    ]) == toset(["0..100:1", "100..inf:3"])
+    error_message = "scale_up_steps must render on the SQS scale-up policy."
+  }
+}
+
+run "step_scaling_default_scale_up_is_single_step" {
+  command = plan
+
+  variables {
+    scaling_approach = "step_scaling"
+  }
+
+  assert {
+    condition = toset([
+      for s in aws_appautoscaling_policy.scale_up_policy[0].step_scaling_policy_configuration[0].step_adjustment :
+      "${s.metric_interval_lower_bound}..${s.metric_interval_upper_bound == null ? "inf" : s.metric_interval_upper_bound}:${s.scaling_adjustment}"
+    ]) == toset(["0..inf:2"])
+    error_message = "Without scale_up_steps the CPU/memory policy must keep one step of scale_up_adjustment tasks from lower bound 0."
+  }
+}
+
+# CPU threshold 80: up to 10 points over adds 1 task, beyond that 2.
+run "step_scaling_steps_render" {
+  command = plan
+
+  variables {
+    scaling_approach = "step_scaling"
+    scale_up_steps = [
+      { lower_bound = 0, upper_bound = 10, adjustment = 1 },
+      { lower_bound = 10, adjustment = 2 },
+    ]
+  }
+
+  assert {
+    condition = toset([
+      for s in aws_appautoscaling_policy.scale_up_policy[0].step_scaling_policy_configuration[0].step_adjustment :
+      "${s.metric_interval_lower_bound}..${s.metric_interval_upper_bound == null ? "inf" : s.metric_interval_upper_bound}:${s.scaling_adjustment}"
+    ]) == toset(["0..10:1", "10..inf:2"])
+    error_message = "scale_up_steps must render on the CPU/memory scale-up policy."
+  }
+}
+
+# The legacy path's alarms index the module's own load balancer, so these runs create one, with no DNS records.
+run "legacy_requests_count_scaling_rejects_steps" {
+  command = plan
+  variables {
+    scaling_approach       = "step_scaling"
+    requests_count_scaling = true
+    create_lb              = true
+    cnames                 = []
+    scale_up_steps         = [{ lower_bound = 0, adjustment = 2 }]
+  }
+  expect_failures = [var.scale_up_steps]
+}
+
+run "custom_metric_step_scaling_rejects_steps" {
+  command = plan
+  variables {
+    scaling_approach = "custom_metric_step_scaling"
+    scale_up_steps   = [{ lower_bound = 0, adjustment = 2 }]
+  }
+  expect_failures = [var.scale_up_steps]
+}
+
 # ── Plan sanity ────────────────────────────────────────────────────────────
 
 run "step_scaling_with_null_requests_count_scaling_still_plans" {

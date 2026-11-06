@@ -132,3 +132,73 @@ run "additional_alarms_reject_unsupported_approach" {
   }
   expect_failures = [var.additional_scale_up_alarms]
 }
+
+# ── Proportional scale-up steps ──────────────────────────────────────────────
+
+# step_adjustment is a set and its bounds are strings in the provider schema, so steps are
+# compared as "lower..upper:adjustment" strings.
+run "default_scale_up_is_single_step" {
+  command = plan
+
+  assert {
+    condition = toset([
+      for s in aws_appautoscaling_policy.request_count_scale_up_policy[0].step_scaling_policy_configuration[0].step_adjustment :
+      "${s.metric_interval_lower_bound}..${s.metric_interval_upper_bound == null ? "inf" : s.metric_interval_upper_bound}:${s.scaling_adjustment}"
+    ]) == toset(["0..inf:2"])
+    error_message = "Without scale_up_steps the policy must keep one step of scale_up_adjustment tasks from lower bound 0."
+  }
+}
+
+# The 0–50% / 50–100% / >100% example for alb_scale_up_threshold = 140 (the default), with small adjustments.
+run "proportional_steps_render_in_order" {
+  command = plan
+
+  variables {
+    scale_up_steps = [
+      { lower_bound = 0, upper_bound = 70, adjustment = 1 },
+      { lower_bound = 70, upper_bound = 140, adjustment = 2 },
+      { lower_bound = 140, adjustment = 4 },
+    ]
+  }
+
+  assert {
+    condition = toset([
+      for s in aws_appautoscaling_policy.request_count_scale_up_policy[0].step_scaling_policy_configuration[0].step_adjustment :
+      "${s.metric_interval_lower_bound}..${s.metric_interval_upper_bound == null ? "inf" : s.metric_interval_upper_bound}:${s.scaling_adjustment}"
+    ]) == toset(["0..70:1", "70..140:2", "140..inf:4"])
+    error_message = "Each scale_up_steps entry must render as its own step_adjustment."
+  }
+}
+
+run "steps_must_start_at_zero" {
+  command = plan
+  variables {
+    scale_up_steps = [{ lower_bound = 10, adjustment = 5 }]
+  }
+  expect_failures = [var.scale_up_steps]
+}
+
+run "last_step_must_be_open_ended" {
+  command = plan
+  variables {
+    scale_up_steps = [{ lower_bound = 0, upper_bound = 70, adjustment = 5 }]
+  }
+  expect_failures = [var.scale_up_steps]
+}
+
+run "step_adjustments_must_be_positive" {
+  command = plan
+  variables {
+    scale_up_steps = [{ lower_bound = 0, adjustment = -1 }]
+  }
+  expect_failures = [var.scale_up_steps]
+}
+
+run "steps_reject_unsupported_approach" {
+  command = plan
+  variables {
+    scaling_approach = "target_tracking"
+    scale_up_steps   = [{ lower_bound = 0, adjustment = 2 }]
+  }
+  expect_failures = [var.scale_up_steps]
+}

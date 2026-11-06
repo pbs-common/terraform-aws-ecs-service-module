@@ -76,6 +76,7 @@ locals {
   service_sg_name_base       = var.service_sg_name != null ? var.service_sg_name : "${local.name}-service-sg${var.use_sg_name_prefix ? "-" : ""}"
 
   load_balancer_sg_name        = var.use_sg_name_prefix ? null : local.load_balancer_sg_name_base
+  load_balancer_sg_description = var.load_balancer_sg_description != null ? var.load_balancer_sg_description : "Controls access to the ${local.name} load balancer"
   load_balancer_sg_name_prefix = var.use_sg_name_prefix ? local.load_balancer_sg_name_base : null
   service_sg_name              = var.use_sg_name_prefix ? null : local.service_sg_name_base
   service_sg_name_prefix       = var.use_sg_name_prefix ? local.service_sg_name_base : null
@@ -192,7 +193,12 @@ locals {
   alb_scaling_tg_arn = var.alb_target_group_arn != null ? var.alb_target_group_arn : try(aws_lb_target_group.target_group[0].arn, "")
 
   # step_scaling (CPU/memory), sqs and request_count each create one step scale-up policy, and never
-  # more than one at a time; additional_scale_up_alarms feed whichever exists.
+  # more than one at a time; scale_up_steps shapes whichever exists.
+  # Without explicit steps, each of those scale-up policies keeps its single step of scale_up_adjustment tasks.
+  scale_up_steps = var.scale_up_steps != null ? var.scale_up_steps : [
+    { lower_bound = 0, upper_bound = null, adjustment = var.scale_up_adjustment }
+  ]
+  # additional_scale_up_alarms feed whichever of those scale-up policies exists.
   step_scale_up_policy_arn = one(concat(
     aws_appautoscaling_policy.scale_up_policy[*].arn,
     aws_appautoscaling_policy.sqs_scale_up_policy[*].arn,

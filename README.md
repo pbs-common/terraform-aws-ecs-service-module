@@ -150,6 +150,21 @@ sqs_down_datapoints_to_alarm = 2
 
 The step-scaling approaches, `step_scaling` (CPU/memory), `sqs` and `request_count`, share the scale-up inputs below. They are not supported with `requests_count_scaling = true`; use `scaling_approach = "request_count"` instead.
 
+By default every scale-up adds `scale_up_adjustment` tasks, however large the breach. Set `scale_up_steps` to add more tasks for a bigger breach. Bounds are offsets from the threshold in the metric's own units, not percentages: percentage points of CPU or memory for `step_scaling`, messages for `sqs`, and requests for `request_count`. Steps must start at `0`, be contiguous, and leave `upper_bound` unset on the last one. With `request_count` and the default threshold of 140, this adds 1 task up to 50% over the threshold, 2 tasks up to 100% over, and 4 tasks beyond that:
+
+```hcl
+scaling_approach       = "request_count"
+alb_scale_up_threshold = 140
+
+scale_up_steps = [
+  { lower_bound = 0, upper_bound = 70, adjustment = 1 },
+  { lower_bound = 70, upper_bound = 140, adjustment = 2 },
+  { lower_bound = 140, adjustment = 4 },
+]
+```
+
+Size adjustments to the service's normal task count: a step that doubles a 2-task service is a modest jump for a 20-task one. However large a step is, the service never grows beyond `max_capacity`.
+
 A service's own metrics only rise once traffic reaches it. To scale up earlier, for instance when an upstream service starts receiving more traffic, add alarms with `additional_scale_up_alarms`. Each one triggers the same scale-up policy as the approach's own scale-up alarms. Any alarm firing scales the service up, so extra alarms can make it scale up earlier but never later. Each alarm takes CloudWatch `metric_queries`, metrics or math expressions, and exactly one of them must set `return_data = true`:
 
 ```hcl
@@ -194,27 +209,27 @@ Below is automatically generated documentation on this Terraform module using [t
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.13.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.0.0 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.67.0 |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.71.0 |
 
 ## Modules
 
 | Name | Source | Version |
-| ---- | ------ | ------- |
+|------|--------|---------|
 | <a name="module_cluster"></a> [cluster](#module\_cluster) | github.com/pbs-common/terraform-aws-ecs-cluster-module | 2.0.0 |
 | <a name="module_task"></a> [task](#module\_task) | github.com/pbs-common/terraform-aws-ecs-task-definition-module | 3.0.2 |
 
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_appautoscaling_policy.cpu_autoscaling_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.custom_metric_scale_down_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.custom_metric_scale_up_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
@@ -287,7 +302,7 @@ Below is automatically generated documentation on this Terraform module using [t
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment (sharedtools, dev, staging, qa, prod) | `string` | n/a | yes |
 | <a name="input_organization"></a> [organization](#input\_organization) | Organization using this module. Used to prefix tags so that they are easily identified as being from your organization | `string` | n/a | yes |
 | <a name="input_owner"></a> [owner](#input\_owner) | Tag used to group resources according to product | `string` | n/a | yes |
@@ -343,6 +358,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_enable_circuit_breaker"></a> [enable\_circuit\_breaker](#input\_enable\_circuit\_breaker) | Enables ECS circuit breaker | `bool` | `true` | no |
 | <a name="input_enable_circuit_breaker_rollback"></a> [enable\_circuit\_breaker\_rollback](#input\_enable\_circuit\_breaker\_rollback) | Enables ECS circuit breaker rollback | `bool` | `true` | no |
 | <a name="input_enable_cross_zone_load_balancing"></a> [enable\_cross\_zone\_load\_balancing](#input\_enable\_cross\_zone\_load\_balancing) | Enable cross-zone load balancing for NLBs. ALB have this enabled by default and cannot be disabled. | `string` | `true` | no |
+| <a name="input_enable_deletion_protection"></a> [enable\_deletion\_protection](#input\_enable\_deletion\_protection) | (optional) Protect the load balancer from deletion. Defaults to `false`, matching what existing<br/>consumers already have in AWS so that adopting this module changes nothing on its own.<br/><br/>A module call cannot set `lifecycle { prevent_destroy }`, so a load balancer adopted into this<br/>module loses whatever Terraform-side guard it had. Setting this to `true` is the provider-native<br/>replacement, and unlike a pipeline check it also stops a delete issued from a local apply or the<br/>console. Worth enabling deliberately for anything serving production traffic. | `bool` | `false` | no |
 | <a name="input_enable_execute_command"></a> [enable\_execute\_command](#input\_enable\_execute\_command) | Enables `ecs exec`. If null, will enable if not on prod | `bool` | `null` | no |
 | <a name="input_entrypoint"></a> [entrypoint](#input\_entrypoint) | (optional) entrypoint to run in the container as an array. e.g. ["sleep", "10"]. If null, does not set an entrypoint in the task definition. | `list(string)` | `null` | no |
 | <a name="input_env_vars"></a> [env\_vars](#input\_env\_vars) | (optional) environment variables to be passed to the container. By default, only passes SSM\_PATH | `set(map(any))` | `null` | no |
@@ -381,9 +397,11 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_lb_deregistration_delay"></a> [lb\_deregistration\_delay](#input\_lb\_deregistration\_delay) | (optional) task deregistration delay for the load balancer | `number` | `300` | no |
 | <a name="input_lb_ingress_cidr_blocks"></a> [lb\_ingress\_cidr\_blocks](#input\_lb\_ingress\_cidr\_blocks) | CIDR blocks allowed to reach the load balancer (HTTP/HTTPS ingress). Defaults to open internet access. | `list(string)` | <pre>[<br/>  "0.0.0.0/0"<br/>]</pre> | no |
 | <a name="input_lb_scheme"></a> [lb\_scheme](#input\_lb\_scheme) | Scheme for the load balancer and subnet selection. "public" creates an internet-facing LB in public subnets. "internal" creates an internal LB in private subnets. | `string` | `"public"` | no |
+| <a name="input_listener_default_message_body"></a> [listener\_default\_message\_body](#input\_listener\_default\_message\_body) | (optional) Body returned with the listeners' default fixed response. Null sends an empty body. | `string` | `null` | no |
 | <a name="input_listener_default_status_code"></a> [listener\_default\_status\_code](#input\_listener\_default\_status\_code) | (optional) HTTP status code returned by the default `fixed-response` action of the HTTP and HTTPS listeners. Requests that match no listener rule get this. Set it to match an existing listener you are adopting, since a differing status code is an in-place listener update that briefly changes what unmatched requests receive. | `string` | `"403"` | no |
 | <a name="input_listener_rule_host_header"></a> [listener\_rule\_host\_header](#input\_listener\_rule\_host\_header) | (optional) Match the service's aliases with a `host_header` condition on the application listener rules. Set to false to route on `custom_http_headers` alone — for a service reachable only through a CDN that injects a shared secret header, say, where the host header varies. With this false a single rule is created per listener instead of one per alias, and `custom_http_headers` must be non-empty because a listener rule needs at least one condition. | `bool` | `true` | no |
 | <a name="input_load_balancer_name"></a> [load\_balancer\_name](#input\_load\_balancer\_name) | Load balancer name. Will default to product if not defined. | `string` | `null` | no |
+| <a name="input_load_balancer_sg_description"></a> [load\_balancer\_sg\_description](#input\_load\_balancer\_sg\_description) | (optional) Description for the load balancer security group. Defaults to<br/>`Controls access to <name> load balancer`.<br/><br/>`description` is ForceNew on aws\_security\_group, so adopting a security group that already exists<br/>under a different description replaces it -- and replacing a load balancer's security group is<br/>not something to do by accident. Set this to the existing description to adopt the group in place. | `string` | `null` | no |
 | <a name="input_load_balancer_sg_name"></a> [load\_balancer\_sg\_name](#input\_load\_balancer\_sg\_name) | Name of the load balancer security group. Used as a prefix unless `use_sg_name_prefix` is false. If null, will use `${local.load_balancer_name}-sg-` (prefix) or `${local.load_balancer_name}-sg` (exact name). | `string` | `null` | no |
 | <a name="input_load_balancer_type"></a> [load\_balancer\_type](#input\_load\_balancer\_type) | Type of load balancer to use. application, network or gateway. | `string` | `"application"` | no |
 | <a name="input_log_group_class"></a> [log\_group\_class](#input\_log\_group\_class) | (Optional) log class of the log group. Possible values are: STANDARD or INFREQUENT\_ACCESS | `string` | `"INFREQUENT_ACCESS"` | no |
@@ -392,6 +410,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_memory_count_scaling"></a> [memory\_count\_scaling](#input\_memory\_count\_scaling) | Use Memory CloudWatch metric for scaling | `bool` | `false` | no |
 | <a name="input_memory_reservation"></a> [memory\_reservation](#input\_memory\_reservation) | (optional) memory reservation for task | `number` | `512` | no |
 | <a name="input_mesh_name"></a> [mesh\_name](#input\_mesh\_name) | (optional) the name for the App Mesh this task is associated with. If null, ignored | `string` | `null` | no |
+| <a name="input_metric_aggregation_type"></a> [metric\_aggregation\_type](#input\_metric\_aggregation\_type) | (optional) How CloudWatch aggregates the metric's datapoints when evaluating which step adjustment<br/>to apply, for every step-scaling policy this module creates.<br/><br/>This is distinct from the alarm statistic (`sqs_up_statistic` and friends), which controls how the<br/>alarm itself evaluates the metric. It only has an observable effect when a policy defines more<br/>than one step; with a single step the same adjustment is chosen either way. | `string` | `"Average"` | no |
 | <a name="input_min_capacity"></a> [min\_capacity](#input\_min\_capacity) | The minimum capacity of tasks for this service | `number` | `1` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name of the service. Will default to product if not defined. | `string` | `null` | no |
 | <a name="input_namespace_id"></a> [namespace\_id](#input\_namespace\_id) | Namespace ID. | `string` | `null` | no |
@@ -422,6 +441,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_scale_up_cpu_threshold"></a> [scale\_up\_cpu\_threshold](#input\_scale\_up\_cpu\_threshold) | Threshold at which CPU utilization triggers a scale up event | `number` | `80` | no |
 | <a name="input_scale_up_memory_threshold"></a> [scale\_up\_memory\_threshold](#input\_scale\_up\_memory\_threshold) | Threshold at which Memory utilization triggers a scale up event | `number` | `80` | no |
 | <a name="input_scale_up_requests_count_per_target"></a> [scale\_up\_requests\_count\_per\_target](#input\_scale\_up\_requests\_count\_per\_target) | Threshold at which Request count per target triggers a scale up event | `number` | `140` | no |
+| <a name="input_scale_up_steps"></a> [scale\_up\_steps](#input\_scale\_up\_steps) | (optional) Step adjustments for the scale-up policy of `scaling_approach` `step_scaling` (CPU/memory), `sqs` or `request_count`, so a bigger breach adds more tasks. Bounds are offsets from the threshold of the alarm that fired, in that alarm's metric units, not percentages. Steps must be in ascending order, start at `lower_bound = 0`, be contiguous, and the last one must leave `upper_bound` unset. Adjustments must be positive. Defaults to one step adding `scale_up_adjustment` tasks. Not supported with `requests_count_scaling = true`. | <pre>list(object({<br/>    lower_bound = number<br/>    upper_bound = optional(number)<br/>    adjustment  = number<br/>  }))</pre> | `null` | no |
 | <a name="input_scaling_approach"></a> [scaling\_approach](#input\_scaling\_approach) | Approach to take with scaling. Valid values are `target_tracking`, `step_scaling`, `sqs`, `request_count`, `custom_metric_target_tracking`, `custom_metric_step_scaling` and `none` | `string` | `"target_tracking"` | no |
 | <a name="input_scaling_evaluation_period"></a> [scaling\_evaluation\_period](#input\_scaling\_evaluation\_period) | Scaling evaluation period in seconds | `number` | `60` | no |
 | <a name="input_scaling_evaluation_periods"></a> [scaling\_evaluation\_periods](#input\_scaling\_evaluation\_periods) | Number of periods over which data is compared to the threshold | `number` | `1` | no |
@@ -438,6 +458,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_sqs_period"></a> [sqs\_period](#input\_sqs\_period) | (optional) Period, in seconds, over which each SQS scaling alarm's metric is aggregated. | `number` | `60` | no |
 | <a name="input_sqs_queue_name"></a> [sqs\_queue\_name](#input\_sqs\_queue\_name) | Name of the SQS queue to use for SQS-based scaling. Required when scaling\_approach is `sqs` | `string` | `""` | no |
 | <a name="input_sqs_scale_down_policy_name"></a> [sqs\_scale\_down\_policy\_name](#input\_sqs\_scale\_down\_policy\_name) | Override name for the SQS scale-down autoscaling policy. Defaults to `${local.name}-sqs-scale-down-policy`. | `string` | `null` | no |
+| <a name="input_sqs_scale_down_step_bound"></a> [sqs\_scale\_down\_step\_bound](#input\_sqs\_scale\_down\_step\_bound) | (optional) Which side of the alarm threshold the SQS scale-down step adjustment is bounded on.<br/><br/>Step adjustments are measured as a delta from the alarm threshold, and the bounds are asymmetric:<br/>the lower bound is **inclusive** and the upper bound is **exclusive**. Which one is correct<br/>therefore depends on the scale-down alarm's comparison operator.<br/><br/>- `upper` (default) suits `LessThanThreshold`. The metric is strictly below the threshold when the<br/>  alarm fires, so the delta is negative and falls inside `(-inf, 0)`.<br/>- `lower` suits `LessThanOrEqualToThreshold` where the metric settles *at* the threshold — for<br/>  example `ApproximateAgeOfOldestMessage <= 0`. The delta is then exactly `0`, which the exclusive<br/>  upper bound does **not** match, so the policy would never fire. `[0, +inf)` does match it.<br/><br/>Getting this wrong does not fail an apply; the service simply never scales back down. | `string` | `"upper"` | no |
 | <a name="input_sqs_scale_up_policy_name"></a> [sqs\_scale\_up\_policy\_name](#input\_sqs\_scale\_up\_policy\_name) | Override name for the SQS scale-up autoscaling policy. Defaults to `${local.name}-sqs-scale-up-policy`. | `string` | `null` | no |
 | <a name="input_sqs_up_comparison_operator"></a> [sqs\_up\_comparison\_operator](#input\_sqs\_up\_comparison\_operator) | (optional) How the SQS scale-up alarm compares the metric to `sqs_visible_up_threshold`. | `string` | `"GreaterThanThreshold"` | no |
 | <a name="input_sqs_up_datapoints_to_alarm"></a> [sqs\_up\_datapoints\_to\_alarm](#input\_sqs\_up\_datapoints\_to\_alarm) | (optional) Datapoints within the evaluation periods that must breach before the SQS scale-up alarm fires. Defaults to all of them. | `number` | `null` | no |
@@ -468,7 +489,7 @@ Below is automatically generated documentation on this Terraform module using [t
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_arn"></a> [arn](#output\_arn) | ARN of the service |
 | <a name="output_cluster"></a> [cluster](#output\_cluster) | Cluster this service is associated with |
 | <a name="output_container_name"></a> [container\_name](#output\_container\_name) | Name of the main container used by this service |
@@ -480,6 +501,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="output_iam_task_role_arn"></a> [iam\_task\_role\_arn](#output\_iam\_task\_role\_arn) | IAM role ARN associated with a task defition, if task defition is created by the ecs service module |
 | <a name="output_image_tag"></a> [image\_tag](#output\_image\_tag) | Tag of the image used by this service |
 | <a name="output_lb_arn"></a> [lb\_arn](#output\_lb\_arn) | Load balancer ARN |
+| <a name="output_lb_arn_suffix"></a> [lb\_arn\_suffix](#output\_lb\_arn\_suffix) | ARN suffix of the load balancer, in the form CloudWatch's LoadBalancer dimension expects |
 | <a name="output_lb_dns_name"></a> [lb\_dns\_name](#output\_lb\_dns\_name) | Load balancer DNS Name |
 | <a name="output_lb_sg"></a> [lb\_sg](#output\_lb\_sg) | Load balancer security group |
 | <a name="output_lb_zone_id"></a> [lb\_zone\_id](#output\_lb\_zone\_id) | Load balancer Zone Id |
@@ -487,5 +509,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="output_service_id"></a> [service\_id](#output\_service\_id) | CloudMap Service ID |
 | <a name="output_service_sg"></a> [service\_sg](#output\_service\_sg) | Service security group |
 | <a name="output_subnets"></a> [subnets](#output\_subnets) | Subnets used by this service |
+| <a name="output_target_group_arn"></a> [target\_group\_arn](#output\_target\_group\_arn) | ARN of the target group, if this module created one |
+| <a name="output_target_group_arn_suffix"></a> [target\_group\_arn\_suffix](#output\_target\_group\_arn\_suffix) | ARN suffix of the target group, in the form CloudWatch's TargetGroup dimension expects |
 | <a name="output_task_def_arn"></a> [task\_def\_arn](#output\_task\_def\_arn) | Current task definition ARN used by this service |
 | <a name="output_task_family"></a> [task\_family](#output\_task\_family) | Current task family used by this service |

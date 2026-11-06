@@ -5,6 +5,7 @@ resource "aws_lb" "lb" {
   security_groups                  = local.lb_security_groups
   idle_timeout                     = var.idle_timeout
   enable_cross_zone_load_balancing = var.enable_cross_zone_load_balancing
+  enable_deletion_protection       = var.enable_deletion_protection
 
 
   internal = local.internal
@@ -46,6 +47,7 @@ resource "aws_lb_listener" "http" {
 
     fixed_response {
       content_type = "text/plain"
+      message_body = var.listener_default_message_body
       status_code  = var.listener_default_status_code
     }
   }
@@ -96,6 +98,7 @@ resource "aws_lb_listener" "https" {
 
     fixed_response {
       content_type = "text/plain"
+      message_body = var.listener_default_message_body
       status_code  = var.listener_default_status_code
     }
   }

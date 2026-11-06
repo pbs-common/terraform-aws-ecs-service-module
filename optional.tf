@@ -292,6 +292,20 @@ variable "target_group_name" {
   type        = string
 }
 
+variable "enable_deletion_protection" {
+  description = <<EOT
+(optional) Protect the load balancer from deletion. Defaults to `false`, matching what existing
+consumers already have in AWS so that adopting this module changes nothing on its own.
+
+A module call cannot set `lifecycle { prevent_destroy }`, so a load balancer adopted into this
+module loses whatever Terraform-side guard it had. Setting this to `true` is the provider-native
+replacement, and unlike a pipeline check it also stops a delete issued from a local apply or the
+console. Worth enabling deliberately for anything serving production traffic.
+EOT
+  default     = false
+  type        = bool
+}
+
 variable "load_balancer_name" {
   description = "Load balancer name. Will default to product if not defined."
   default     = null
@@ -416,6 +430,12 @@ EOT
     condition     = var.http_listener_action == null || contains(["redirect", "forward", "fixed_response"], coalesce(var.http_listener_action, "redirect"))
     error_message = "The http_listener_action must be `redirect`, `forward` or `fixed_response`."
   }
+}
+
+variable "listener_default_message_body" {
+  description = "(optional) Body returned with the listeners' default fixed response. Null sends an empty body."
+  default     = null
+  type        = string
 }
 
 variable "listener_default_status_code" {
@@ -550,6 +570,19 @@ variable "idle_timeout" {
   description = "Idle timeout for the load balancer. If null, will use whatever the default is for the load balancer type."
   default     = null
   type        = number
+}
+
+variable "load_balancer_sg_description" {
+  description = <<EOT
+(optional) Description for the load balancer security group. Defaults to
+`Controls access to <name> load balancer`.
+
+`description` is ForceNew on aws_security_group, so adopting a security group that already exists
+under a different description replaces it -- and replacing a load balancer's security group is
+not something to do by accident. Set this to the existing description to adopt the group in place.
+EOT
+  default     = null
+  type        = string
 }
 
 variable "load_balancer_sg_name" {
@@ -770,6 +803,47 @@ variable "sqs_scale_down_policy_name" {
   type        = string
 }
 
+variable "sqs_scale_down_step_bound" {
+  description = <<EOT
+(optional) Which side of the alarm threshold the SQS scale-down step adjustment is bounded on.
+
+Step adjustments are measured as a delta from the alarm threshold, and the bounds are asymmetric:
+the lower bound is **inclusive** and the upper bound is **exclusive**. Which one is correct
+therefore depends on the scale-down alarm's comparison operator.
+
+- `upper` (default) suits `LessThanThreshold`. The metric is strictly below the threshold when the
+  alarm fires, so the delta is negative and falls inside `(-inf, 0)`.
+- `lower` suits `LessThanOrEqualToThreshold` where the metric settles *at* the threshold — for
+  example `ApproximateAgeOfOldestMessage <= 0`. The delta is then exactly `0`, which the exclusive
+  upper bound does **not** match, so the policy would never fire. `[0, +inf)` does match it.
+
+Getting this wrong does not fail an apply; the service simply never scales back down.
+EOT
+  default     = "upper"
+  type        = string
+  validation {
+    condition     = contains(["upper", "lower"], var.sqs_scale_down_step_bound)
+    error_message = "The sqs_scale_down_step_bound must be one of [upper, lower]."
+  }
+}
+
+variable "metric_aggregation_type" {
+  description = <<EOT
+(optional) How CloudWatch aggregates the metric's datapoints when evaluating which step adjustment
+to apply, for every step-scaling policy this module creates.
+
+This is distinct from the alarm statistic (`sqs_up_statistic` and friends), which controls how the
+alarm itself evaluates the metric. It only has an observable effect when a policy defines more
+than one step; with a single step the same adjustment is chosen either way.
+EOT
+  default     = "Average"
+  type        = string
+  validation {
+    condition     = contains(["Average", "Minimum", "Maximum"], var.metric_aggregation_type)
+    error_message = "The metric_aggregation_type must be one of [Average, Minimum, Maximum]."
+  }
+}
+
 variable "sqs_visible_up_threshold" {
   description = "Number of visible SQS messages that triggers a scale-up event"
   default     = 100
@@ -840,6 +914,32 @@ variable "alb_scale_down_policy_name" {
   description = "Override name for the ALB scale-down autoscaling policy. Defaults to `$${local.name}-request-count-scale-down-policy`."
   default     = null
   type        = string
+}
+
+variable "scale_up_steps" {
+  description = "(optional) Step adjustments for the scale-up policy of `scaling_approach` `step_scaling` (CPU/memory), `sqs` or `request_count`, so a bigger breach adds more tasks. Bounds are offsets from the threshold of the alarm that fired, in that alarm's metric units, not percentages. Steps must be in ascending order, start at `lower_bound = 0`, be contiguous, and the last one must leave `upper_bound` unset. Adjustments must be positive. Defaults to one step adding `scale_up_adjustment` tasks. Not supported with `requests_count_scaling = true`."
+  default     = null
+  type = list(object({
+    lower_bound = number
+    upper_bound = optional(number)
+    adjustment  = number
+  }))
+  validation {
+    condition     = var.scale_up_steps == null || contains(["request_count", "sqs"], var.scaling_approach) || (var.scaling_approach == "step_scaling" && var.requests_count_scaling == false)
+    error_message = "The scale_up_steps are only used when scaling_approach is step_scaling (without requests_count_scaling), sqs or request_count."
+  }
+  validation {
+    condition     = var.scale_up_steps == null ? true : length(var.scale_up_steps) == 0 ? true : var.scale_up_steps[0].lower_bound == 0
+    error_message = "The first of scale_up_steps must have lower_bound = 0, or a breach smaller than that bound adds no tasks."
+  }
+  validation {
+    condition     = var.scale_up_steps == null ? true : length(var.scale_up_steps) == 0 ? true : var.scale_up_steps[length(var.scale_up_steps) - 1].upper_bound == null
+    error_message = "The last of scale_up_steps must leave upper_bound unset, or a breach above it adds no tasks."
+  }
+  validation {
+    condition     = var.scale_up_steps == null ? true : alltrue([for s in var.scale_up_steps : s.adjustment > 0])
+    error_message = "Each of scale_up_steps must have a positive adjustment."
+  }
 }
 
 variable "additional_scale_up_alarms" {
