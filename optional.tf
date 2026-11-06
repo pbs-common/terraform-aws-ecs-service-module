@@ -942,6 +942,36 @@ variable "scale_up_steps" {
   }
 }
 
+variable "additional_scale_up_alarms" {
+  description = "(optional) Extra CloudWatch alarms that trigger the scale-up policy of `scaling_approach` `step_scaling` (CPU/memory), `sqs` or `request_count`, alongside that approach's own scale-up alarms. Any one of them firing scales the service up, so they can make it scale up earlier but never later. Each alarm fires when the one `metric_queries` entry with `return_data = true` is at or above `threshold`, and is named `<name>-<alarm name>-scale-up`. Not supported with `requests_count_scaling = true`."
+  default     = []
+  type = list(object({
+    name                = string
+    threshold           = number
+    evaluation_periods  = optional(number, 1)
+    datapoints_to_alarm = optional(number)
+    treat_missing_data  = optional(string, "missing")
+    metric_queries = list(object({
+      id          = string
+      expression  = optional(string)
+      label       = optional(string)
+      return_data = optional(bool, false)
+      metric = optional(object({
+        namespace   = string
+        metric_name = string
+        period      = optional(number, 60)
+        stat        = optional(string, "Sum")
+        unit        = optional(string)
+        dimensions  = optional(map(string), {})
+      }))
+    }))
+  }))
+  validation {
+    condition     = length(var.additional_scale_up_alarms) == 0 || contains(["request_count", "sqs"], var.scaling_approach) || (var.scaling_approach == "step_scaling" && var.requests_count_scaling == false)
+    error_message = "The additional_scale_up_alarms are only used when scaling_approach is step_scaling (without requests_count_scaling), sqs or request_count."
+  }
+}
+
 # ── Custom-metric based scaling (scaling_approach = "custom_metric_target_tracking" or "custom_metric_step_scaling") ────
 
 variable "custom_metric_target_tracking_scaling" {

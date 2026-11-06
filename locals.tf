@@ -198,6 +198,12 @@ locals {
   scale_up_steps = var.scale_up_steps != null ? var.scale_up_steps : [
     { lower_bound = 0, upper_bound = null, adjustment = var.scale_up_adjustment }
   ]
+  # additional_scale_up_alarms feed whichever of those scale-up policies exists.
+  step_scale_up_policy_arn = one(concat(
+    aws_appautoscaling_policy.scale_up_policy[*].arn,
+    aws_appautoscaling_policy.sqs_scale_up_policy[*].arn,
+    aws_appautoscaling_policy.request_count_scale_up_policy[*].arn,
+  ))
 }
 
 data "aws_default_tags" "common_tags" {}

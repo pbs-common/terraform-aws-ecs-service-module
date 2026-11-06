@@ -37,6 +37,47 @@ variables {
   sqs_queue_name   = "work"
 }
 
+# ── Additional scale-up alarms ───────────────────────────────────────────────
+
+run "sqs_additional_alarm_triggers_sqs_scale_up_policy" {
+  command = plan
+
+  variables {
+    additional_scale_up_alarms = [{ name = "upstream", threshold = 1, metric_queries = [{ id = "q", return_data = true, expression = "1" }] }]
+  }
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.additional_scale_up["upstream"].alarm_actions == toset(["arn:aws:autoscaling:us-east-1:123456789012:scalingPolicy:sqs-scale-up"])
+    error_message = "With scaling_approach sqs, an extra alarm must trigger the SQS scale-up policy."
+  }
+}
+
+run "step_scaling_additional_alarm_triggers_step_scale_up_policy" {
+  command = plan
+
+  variables {
+    scaling_approach           = "step_scaling"
+    additional_scale_up_alarms = [{ name = "upstream", threshold = 1, metric_queries = [{ id = "q", return_data = true, expression = "1" }] }]
+  }
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.additional_scale_up["upstream"].alarm_actions == toset(["arn:aws:autoscaling:us-east-1:123456789012:scalingPolicy:step-scale-up"])
+    error_message = "With scaling_approach step_scaling, an extra alarm must trigger the CPU/memory scale-up policy."
+  }
+}
+
+run "legacy_requests_count_scaling_rejects_additional_alarms" {
+  command = plan
+  variables {
+    scaling_approach           = "step_scaling"
+    requests_count_scaling     = true
+    create_lb                  = true
+    cnames                     = []
+    additional_scale_up_alarms = [{ name = "upstream", threshold = 1, metric_queries = [{ id = "q", return_data = true, expression = "1" }] }]
+  }
+  expect_failures = [var.additional_scale_up_alarms]
+}
+
 # ── Scale-up steps ───────────────────────────────────────────────────────────
 
 # step_adjustment is a set and its bounds are strings in the provider schema, so steps are
@@ -140,7 +181,7 @@ run "step_scaling_with_null_requests_count_scaling_still_plans" {
     requests_count_scaling = null
   }
   assert {
-    condition     = length(aws_appautoscaling_policy.scale_up_policy) == 0
+    condition     = length(aws_appautoscaling_policy.scale_up_policy) == 0 && length(aws_cloudwatch_metric_alarm.additional_scale_up) == 0
     error_message = "A null requests_count_scaling must keep planning, with no step policies, as before."
   }
 }

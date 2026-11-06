@@ -508,6 +508,49 @@ resource "aws_cloudwatch_metric_alarm" "request_count_low" {
   )
 }
 
+# Each extra alarm is an OR with the approach's own scale-up alarms: any one firing triggers the same scale-up policy.
+resource "aws_cloudwatch_metric_alarm" "additional_scale_up" {
+  for_each = { for a in var.additional_scale_up_alarms : a.name => a }
+
+  alarm_name          = "${local.name}-${each.value.name}-scale-up"
+  alarm_description   = "Scale up ${local.name} based on ${each.value.name}"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = each.value.evaluation_periods
+  datapoints_to_alarm = each.value.datapoints_to_alarm
+  threshold           = each.value.threshold
+  treat_missing_data  = each.value.treat_missing_data
+
+  dynamic "metric_query" {
+    for_each = each.value.metric_queries
+    content {
+      id          = metric_query.value.id
+      expression  = metric_query.value.expression
+      label       = metric_query.value.label
+      return_data = metric_query.value.return_data
+
+      dynamic "metric" {
+        for_each = metric_query.value.metric != null ? [metric_query.value.metric] : []
+        content {
+          namespace   = metric.value.namespace
+          metric_name = metric.value.metric_name
+          period      = metric.value.period
+          stat        = metric.value.stat
+          unit        = metric.value.unit
+          dimensions  = metric.value.dimensions
+        }
+      }
+    }
+  }
+
+  actions_enabled = true
+  alarm_actions   = [local.step_scale_up_policy_arn]
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name} CW Metric Alarm ${each.value.name} Scale Up" },
+  )
+}
+
 # ── Custom-metric target-tracking scaling (scaling_approach = "custom_metric_target_tracking") ────
 
 # Target-tracking: AWS manages both scale-out and scale-in around a single target value for this metric.
