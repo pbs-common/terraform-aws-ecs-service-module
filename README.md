@@ -5,7 +5,7 @@
 ### Using the Repo Source
 
 ```hcl
-github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.6
+github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z
 ```
 
 ### Alternative Installation Methods
@@ -26,7 +26,7 @@ Integrate this module like so:
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.6"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -49,7 +49,7 @@ This module will create an ECS cluster if one is not provided. If you would like
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.6"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -75,7 +75,7 @@ By default the service runs on the `launch_type` given (`FARGATE` unless overrid
 
 ```hcl
 module "service" {
-  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=12.0.6"
+  source = "github.com/pbs/terraform-aws-ecs-service-module?ref=x.y.z"
 
   # Required
   hosted_zone = "example.com"
@@ -127,7 +127,7 @@ See [the cdn-only example](/examples/cdn-only) for a service that rejects on bot
 
 With `scaling_approach = "sqs"`, the service scales on an SQS queue's metrics. The scale-up and scale-down alarms are configured independently, because a queue-backed worker usually needs asymmetric signals: scale up as soon as work arrives, but scale down only once nothing is still in flight.
 
-`sqs_metric_name` sets the metric for both alarms. Override either side with `sqs_up_metric_name` / `sqs_down_metric_name`, and tune each alarm with the matching `sqs_up_*` / `sqs_down_*` variable for statistic, comparison operator, evaluation periods and datapoints to alarm.
+`sqs_metric_name` sets the metric for both alarms. Override either side with `sqs_up_metric_name` / `sqs_down_metric_name`, and tune each alarm with the matching `sqs_up_*` / `sqs_down_*` variable for statistic, comparison operator, evaluation periods, datapoints to alarm and treat missing data. SQS can stop publishing metrics for a queue that has been idle for hours; set `sqs_down_treat_missing_data = "breaching"` so that an idle worker can still scale down.
 
 A worker that must not be scaled down while messages are in flight, for instance, scales up on `ApproximateNumberOfMessagesVisible` and down on `ApproximateNumberOfMessagesNotVisible`:
 
@@ -144,6 +144,24 @@ sqs_down_metric_name         = "ApproximateNumberOfMessagesNotVisible"
 sqs_visible_down_threshold   = 5
 sqs_down_evaluation_periods  = 2
 sqs_down_datapoints_to_alarm = 2
+```
+
+### Request Count Scaling
+
+With `scaling_approach = "request_count"`, the service scales on ALB request metrics through step scaling: a high alarm at `alb_scale_up_threshold` and a low alarm at `alb_scale_down_threshold`.
+
+`RequestCountPerTarget` divides requests by the number of healthy tasks, so it drops whenever tasks are added or come up healthy. Set `alb_metric_name = "RequestCount"` to alarm on the target group's total requests instead, which does not depend on the number of healthy tasks, and size both thresholds as totals per `scaling_evaluation_period`. Adding tasks does not lower `RequestCount`. While traffic stays above `alb_scale_up_threshold`, the service keeps adding tasks every `scale_up_cooldown` until it reaches `max_capacity`, and it scales down only once traffic falls below `alb_scale_down_threshold`.
+
+Tune each alarm with `alb_up_datapoints_to_alarm` / `alb_down_datapoints_to_alarm` (out of `scaling_evaluation_periods`) and `alb_up_treat_missing_data` / `alb_down_treat_missing_data`. An ALB publishes no request metrics for a period with no requests. Set `alb_down_treat_missing_data = "breaching"` so that an idle service can still scale down:
+
+```hcl
+alb_metric_name              = "RequestCount"
+alb_scale_up_threshold       = 6000
+alb_scale_down_threshold     = 1500
+scaling_evaluation_periods   = 3
+alb_up_datapoints_to_alarm   = 1
+alb_down_datapoints_to_alarm = 3
+alb_down_treat_missing_data  = "breaching"
 ```
 
 ### Step Scaling Options
@@ -190,11 +208,15 @@ additional_scale_up_alarms = [{
 
 Extra alarms only trigger scale-up; they do not hold back scale-down. During an upstream surge that has not yet reached this service, the service's own metric is still low, and scaling up early lowers it further, so the scale-down alarm can be in ALARM at the same time as the extra alarm. The service then scales up every `scale_up_cooldown` and back down every `scale_down_cooldown` for as long as both alarms fire. To avoid that, make scale-down deliberately slow when using extra alarms: a conservative scale-down threshold, scale-down datapoints to alarm equal to the evaluation periods, and a `scale_down_cooldown` longer than the time the surge takes to reach this service.
 
+### Alarm Tuning Options
+
+The `step_scaling` CPU and memory alarms take `cpu_memory_up_datapoints_to_alarm` / `cpu_memory_down_datapoints_to_alarm` (out of `scaling_evaluation_periods`; all of them when unset) and `cpu_memory_up_treat_missing_data` / `cpu_memory_down_treat_missing_data`. Each `custom_metric_step_scaling` entry takes `datapoints_to_alarm` in its `scale_up` and `scale_down` objects.
+
 ## Adding This Version of the Module
 
 If this repo is added as a subtree, then the version of the module should be close to the version shown here:
 
-`12.0.6`
+`x.y.z`
 
 Note, however that subtrees can be altered as desired within repositories.
 
@@ -313,12 +335,17 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_alb_alarm_high_name"></a> [alb\_alarm\_high\_name](#input\_alb\_alarm\_high\_name) | Override name for the ALB scale-up CloudWatch alarm. Defaults to `${local.name}-request-count-high`. | `string` | `null` | no |
 | <a name="input_alb_alarm_low_name"></a> [alb\_alarm\_low\_name](#input\_alb\_alarm\_low\_name) | Override name for the ALB scale-down CloudWatch alarm. Defaults to `${local.name}-request-count-low`. | `string` | `null` | no |
 | <a name="input_alb_arn"></a> [alb\_arn](#input\_alb\_arn) | ARN of the ALB used for ALB-based scaling. Required when `scaling_approach` is `request_count` and `create_lb` is false. When `create_lb` is true the module's own ALB is used automatically. | `string` | `null` | no |
+| <a name="input_alb_down_datapoints_to_alarm"></a> [alb\_down\_datapoints\_to\_alarm](#input\_alb\_down\_datapoints\_to\_alarm) | (optional) Datapoints within `scaling_evaluation_periods` that must breach before the `request_count` scale-down alarm fires. | `number` | `1` | no |
+| <a name="input_alb_down_treat_missing_data"></a> [alb\_down\_treat\_missing\_data](#input\_alb\_down\_treat\_missing\_data) | (optional) How the `request_count` scale-down alarm treats missing datapoints. The ALB publishes no request metrics for a period with no requests, so set this to `breaching` to let an idle service scale down. | `string` | `"missing"` | no |
+| <a name="input_alb_metric_name"></a> [alb\_metric\_name](#input\_alb\_metric\_name) | (optional) ALB metric the `request_count` scaling alarms watch. `RequestCountPerTarget` divides requests by the number of healthy targets, so it drops whenever tasks are added. `RequestCount` is the total number of requests the target group receives, which does not depend on how many tasks are healthy. Size `alb_scale_up_threshold` and `alb_scale_down_threshold` to the chosen metric. | `string` | `"RequestCountPerTarget"` | no |
 | <a name="input_alb_scale_down_policy_name"></a> [alb\_scale\_down\_policy\_name](#input\_alb\_scale\_down\_policy\_name) | Override name for the ALB scale-down autoscaling policy. Defaults to `${local.name}-request-count-scale-down-policy`. | `string` | `null` | no |
-| <a name="input_alb_scale_down_threshold"></a> [alb\_scale\_down\_threshold](#input\_alb\_scale\_down\_threshold) | RequestCountPerTarget value below which a scale-down event is triggered when `scaling_approach` is `request_count`. | `number` | `70` | no |
+| <a name="input_alb_scale_down_threshold"></a> [alb\_scale\_down\_threshold](#input\_alb\_scale\_down\_threshold) | Value of `alb_metric_name` below which a scale-down event is triggered when `scaling_approach` is `request_count`. | `number` | `70` | no |
 | <a name="input_alb_scale_up_policy_name"></a> [alb\_scale\_up\_policy\_name](#input\_alb\_scale\_up\_policy\_name) | Override name for the ALB scale-up autoscaling policy. Defaults to `${local.name}-request-count-scale-up-policy`. | `string` | `null` | no |
-| <a name="input_alb_scale_up_threshold"></a> [alb\_scale\_up\_threshold](#input\_alb\_scale\_up\_threshold) | RequestCountPerTarget value that triggers a scale-up event when `scaling_approach` is `request_count`. | `number` | `140` | no |
+| <a name="input_alb_scale_up_threshold"></a> [alb\_scale\_up\_threshold](#input\_alb\_scale\_up\_threshold) | Value of `alb_metric_name` that triggers a scale-up event when `scaling_approach` is `request_count`. | `number` | `140` | no |
 | <a name="input_alb_ssl_policy"></a> [alb\_ssl\_policy](#input\_alb\_ssl\_policy) | SSL policy to use for an Application Load Balancer application. | `string` | `"ELBSecurityPolicy-TLS13-1-2-2021-06"` | no |
 | <a name="input_alb_target_group_arn"></a> [alb\_target\_group\_arn](#input\_alb\_target\_group\_arn) | ARN of the ALB target group used for ALB-based scaling. Required when `scaling_approach` is `request_count` and `create_lb` is false. When `create_lb` is true the module's own target group is used automatically. | `string` | `null` | no |
+| <a name="input_alb_up_datapoints_to_alarm"></a> [alb\_up\_datapoints\_to\_alarm](#input\_alb\_up\_datapoints\_to\_alarm) | (optional) Datapoints within `scaling_evaluation_periods` that must breach before the `request_count` scale-up alarm fires. | `number` | `1` | no |
+| <a name="input_alb_up_treat_missing_data"></a> [alb\_up\_treat\_missing\_data](#input\_alb\_up\_treat\_missing\_data) | (optional) How the `request_count` scale-up alarm treats missing datapoints. The ALB publishes no request metrics for a period with no requests. | `string` | `"missing"` | no |
 | <a name="input_aliases"></a> [aliases](#input\_aliases) | CNAME(s) that are allowed to be used for this service. Default is `product`.`hosted_zone`. e.g. [product.example.com] --> [product.example.com] | `list(string)` | `null` | no |
 | <a name="input_alpn_policy"></a> [alpn\_policy](#input\_alpn\_policy) | Name of the Application-Layer Protocol Negotiation (ALPN) policy. Can be set if protocol is TLS. Valid values are HTTP1Only, HTTP2Only, HTTP2Optional, HTTP2Preferred, and None. | `string` | `"HTTP2Preferred"` | no |
 | <a name="input_awslogs_driver_mode"></a> [awslogs\_driver\_mode](#input\_awslogs\_driver\_mode) | (optional) awslogs driver mode. Set this to `blocking` if you would rather have an outage than lose logs. | `string` | `"non-blocking"` | no |
@@ -342,12 +369,16 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_container_port"></a> [container\_port](#input\_container\_port) | (optional) port the container is exposing | `number` | `80` | no |
 | <a name="input_container_protocol"></a> [container\_protocol](#input\_container\_protocol) | Protocol to use in connection to the container | `string` | `"HTTP"` | no |
 | <a name="input_cpu_count_scaling"></a> [cpu\_count\_scaling](#input\_cpu\_count\_scaling) | Use CPU CloudWatch metric for scaling | `bool` | `true` | no |
+| <a name="input_cpu_memory_down_datapoints_to_alarm"></a> [cpu\_memory\_down\_datapoints\_to\_alarm](#input\_cpu\_memory\_down\_datapoints\_to\_alarm) | (optional) Datapoints within `scaling_evaluation_periods` that must breach before the `step_scaling` CPU and memory scale-down alarms fire. Defaults to all of them. | `number` | `null` | no |
+| <a name="input_cpu_memory_down_treat_missing_data"></a> [cpu\_memory\_down\_treat\_missing\_data](#input\_cpu\_memory\_down\_treat\_missing\_data) | (optional) How the `step_scaling` CPU and memory scale-down alarms treat missing datapoints. | `string` | `"missing"` | no |
+| <a name="input_cpu_memory_up_datapoints_to_alarm"></a> [cpu\_memory\_up\_datapoints\_to\_alarm](#input\_cpu\_memory\_up\_datapoints\_to\_alarm) | (optional) Datapoints within `scaling_evaluation_periods` that must breach before the `step_scaling` CPU and memory scale-up alarms fire. Defaults to all of them. | `number` | `null` | no |
+| <a name="input_cpu_memory_up_treat_missing_data"></a> [cpu\_memory\_up\_treat\_missing\_data](#input\_cpu\_memory\_up\_treat\_missing\_data) | (optional) How the `step_scaling` CPU and memory scale-up alarms treat missing datapoints. | `string` | `"missing"` | no |
 | <a name="input_cpu_reservation"></a> [cpu\_reservation](#input\_cpu\_reservation) | (optional) CPU reservation for task | `number` | `256` | no |
 | <a name="input_create_attach_eip_to_nlb"></a> [create\_attach\_eip\_to\_nlb](#input\_create\_attach\_eip\_to\_nlb) | Create EIPs for each subnet and attach them to the NLB (public only) | `bool` | `false` | no |
 | <a name="input_create_http_listener_rules"></a> [create\_http\_listener\_rules](#input\_create\_http\_listener\_rules) | (optional) Create the application listener rules on the HTTP listener. When null, rules are created whenever the HTTP listener's default action is `fixed_response` (otherwise the listener redirects or forwards everything and rules would be unreachable). Set to false for an HTTP listener that rejects every request. | `bool` | `null` | no |
 | <a name="input_create_lb"></a> [create\_lb](#input\_create\_lb) | Create load balancer for service. If creating a virtual node, will ignore value. | `bool` | `true` | no |
 | <a name="input_custom_http_headers"></a> [custom\_http\_headers](#input\_custom\_http\_headers) | (optional) Custom HTTP headers for application load balancers. Format should be a list of maps with `name` and `value` keys. e.g. [{ name = "header1", value = "value1"}, { name = "header2", value = "value2"}] | `list(object({ name = string, value = string }))` | `[]` | no |
-| <a name="input_custom_metric_step_scaling"></a> [custom\_metric\_step\_scaling](#input\_custom\_metric\_step\_scaling) | List of step-scaling policies (distinct high/low alarms and scale up/down policies) driven by user-provided CloudWatch metrics. `scale_up` and `scale_down` each specify their own metric independently, so you can scale out on one metric and scale in on a different one. Only used when `scaling_approach` is `custom_metric_step_scaling`. | <pre>list(object({<br/>    name = string<br/><br/>    scale_up = object({<br/>      namespace           = string<br/>      metric_name         = string<br/>      statistic           = optional(string, "Average")<br/>      dimensions          = optional(map(string), {})<br/>      period              = optional(number, 60)<br/>      evaluation_periods  = optional(number, 1)<br/>      threshold           = number<br/>      adjustment          = optional(number, 1)<br/>      cooldown            = optional(number, 60)<br/>      treat_missing_data  = optional(string, "missing")<br/>      comparison_operator = optional(string, "GreaterThanOrEqualToThreshold")<br/>      # Override the generated "${local.name}-${name}-high" alarm name, e.g. to match a pre-existing alarm and avoid replacement.<br/>      alarm_name = optional(string)<br/>      # Override the generated "${local.name}-${name}-scale-up-policy" policy name, e.g. to match a pre-existing policy and avoid replacement.<br/>      policy_name = optional(string)<br/>      # metric_interval_lower_bound for the single step_adjustment; default matches AWS's typical single-step convention.<br/>      lower_bound = optional(number, 0)<br/>    })<br/><br/>    scale_down = object({<br/>      namespace           = string<br/>      metric_name         = string<br/>      statistic           = optional(string, "Average")<br/>      dimensions          = optional(map(string), {})<br/>      period              = optional(number, 60)<br/>      evaluation_periods  = optional(number, 1)<br/>      threshold           = number<br/>      adjustment          = optional(number, -1)<br/>      cooldown            = optional(number, 300)<br/>      treat_missing_data  = optional(string, "missing")<br/>      comparison_operator = optional(string, "LessThanOrEqualToThreshold")<br/>      # Override the generated "${local.name}-${name}-low" alarm name, e.g. to match a pre-existing alarm and avoid replacement.<br/>      alarm_name = optional(string)<br/>      # Override the generated "${local.name}-${name}-scale-down-policy" policy name, e.g. to match a pre-existing policy and avoid replacement.<br/>      policy_name = optional(string)<br/>      # metric_interval_upper_bound for the single step_adjustment; default matches AWS's typical single-step convention.<br/>      upper_bound = optional(number, 0)<br/>    })<br/>  }))</pre> | `[]` | no |
+| <a name="input_custom_metric_step_scaling"></a> [custom\_metric\_step\_scaling](#input\_custom\_metric\_step\_scaling) | List of step-scaling policies (distinct high/low alarms and scale up/down policies) driven by user-provided CloudWatch metrics. `scale_up` and `scale_down` each specify their own metric independently, so you can scale out on one metric and scale in on a different one. Only used when `scaling_approach` is `custom_metric_step_scaling`. | <pre>list(object({<br/>    name = string<br/><br/>    scale_up = object({<br/>      namespace           = string<br/>      metric_name         = string<br/>      statistic           = optional(string, "Average")<br/>      dimensions          = optional(map(string), {})<br/>      period              = optional(number, 60)<br/>      evaluation_periods  = optional(number, 1)<br/>      datapoints_to_alarm = optional(number)<br/>      threshold           = number<br/>      adjustment          = optional(number, 1)<br/>      cooldown            = optional(number, 60)<br/>      treat_missing_data  = optional(string, "missing")<br/>      comparison_operator = optional(string, "GreaterThanOrEqualToThreshold")<br/>      # Override the generated "${local.name}-${name}-high" alarm name, e.g. to match a pre-existing alarm and avoid replacement.<br/>      alarm_name = optional(string)<br/>      # Override the generated "${local.name}-${name}-scale-up-policy" policy name, e.g. to match a pre-existing policy and avoid replacement.<br/>      policy_name = optional(string)<br/>      # metric_interval_lower_bound for the single step_adjustment; default matches AWS's typical single-step convention.<br/>      lower_bound = optional(number, 0)<br/>    })<br/><br/>    scale_down = object({<br/>      namespace           = string<br/>      metric_name         = string<br/>      statistic           = optional(string, "Average")<br/>      dimensions          = optional(map(string), {})<br/>      period              = optional(number, 60)<br/>      evaluation_periods  = optional(number, 1)<br/>      datapoints_to_alarm = optional(number)<br/>      threshold           = number<br/>      adjustment          = optional(number, -1)<br/>      cooldown            = optional(number, 300)<br/>      treat_missing_data  = optional(string, "missing")<br/>      comparison_operator = optional(string, "LessThanOrEqualToThreshold")<br/>      # Override the generated "${local.name}-${name}-low" alarm name, e.g. to match a pre-existing alarm and avoid replacement.<br/>      alarm_name = optional(string)<br/>      # Override the generated "${local.name}-${name}-scale-down-policy" policy name, e.g. to match a pre-existing policy and avoid replacement.<br/>      policy_name = optional(string)<br/>      # metric_interval_upper_bound for the single step_adjustment; default matches AWS's typical single-step convention.<br/>      upper_bound = optional(number, 0)<br/>    })<br/>  }))</pre> | `[]` | no |
 | <a name="input_custom_metric_target_tracking_scaling"></a> [custom\_metric\_target\_tracking\_scaling](#input\_custom\_metric\_target\_tracking\_scaling) | List of TARGET-TRACKING scaling policies driven by user-provided CloudWatch metrics (AWS auto-manages both scale-out and scale-in around a single target value). Only used when `scaling_approach` is `custom_metric_target_tracking`. Each entry creates its own aws\_appautoscaling\_policy. | <pre>list(object({<br/>    name               = string<br/>    namespace          = string<br/>    metric_name        = string<br/>    statistic          = optional(string, "Average")<br/>    unit               = optional(string)<br/>    dimensions         = optional(map(string), {})<br/>    target_value       = number<br/>    scale_in_cooldown  = optional(number)<br/>    scale_out_cooldown = optional(number)<br/>    disable_scale_in   = optional(bool, false)<br/>  }))</pre> | `[]` | no |
 | <a name="input_custom_target_group_arns"></a> [custom\_target\_group\_arns](#input\_custom\_target\_group\_arns) | List of existing ALB target group ARNs to attach to the service instead of creating a new load balancer. | `list(string)` | `[]` | no |
 | <a name="input_deployment_maximum_percent"></a> [deployment\_maximum\_percent](#input\_deployment\_maximum\_percent) | The upper limit (as a percentage of the service's desiredCount) of the number of running tasks that can be running in a service during a deployment | `number` | `150` | no |
@@ -454,6 +485,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_sqs_down_evaluation_periods"></a> [sqs\_down\_evaluation\_periods](#input\_sqs\_down\_evaluation\_periods) | (optional) Number of periods the SQS scale-down alarm evaluates. Raise this to make scale-down deliberately slower than scale-up. | `number` | `1` | no |
 | <a name="input_sqs_down_metric_name"></a> [sqs\_down\_metric\_name](#input\_sqs\_down\_metric\_name) | (optional) CloudWatch metric name for the SQS scale-down alarm. Falls back to `sqs_metric_name`. Set this to a different metric than the scale-up alarm to avoid scaling down while messages are still in flight — `ApproximateNumberOfMessagesNotVisible` or `ApproximateAgeOfOldestMessage`, for instance. | `string` | `null` | no |
 | <a name="input_sqs_down_statistic"></a> [sqs\_down\_statistic](#input\_sqs\_down\_statistic) | (optional) Statistic applied to the metric of the SQS scale-down alarm. | `string` | `"Sum"` | no |
+| <a name="input_sqs_down_treat_missing_data"></a> [sqs\_down\_treat\_missing\_data](#input\_sqs\_down\_treat\_missing\_data) | (optional) How the SQS scale-down alarm treats missing datapoints. SQS can stop publishing metrics for a queue that has been idle for hours, so set this to `breaching` to let an idle worker scale down. | `string` | `"missing"` | no |
 | <a name="input_sqs_metric_name"></a> [sqs\_metric\_name](#input\_sqs\_metric\_name) | CloudWatch metric name to use for SQS-based scaling alarms. Defaults to `ApproximateNumberOfMessagesVisible`. Acts as the fallback for `sqs_up_metric_name` and `sqs_down_metric_name`. | `string` | `"ApproximateNumberOfMessagesVisible"` | no |
 | <a name="input_sqs_period"></a> [sqs\_period](#input\_sqs\_period) | (optional) Period, in seconds, over which each SQS scaling alarm's metric is aggregated. | `number` | `60` | no |
 | <a name="input_sqs_queue_name"></a> [sqs\_queue\_name](#input\_sqs\_queue\_name) | Name of the SQS queue to use for SQS-based scaling. Required when scaling\_approach is `sqs` | `string` | `""` | no |
@@ -465,6 +497,7 @@ Below is automatically generated documentation on this Terraform module using [t
 | <a name="input_sqs_up_evaluation_periods"></a> [sqs\_up\_evaluation\_periods](#input\_sqs\_up\_evaluation\_periods) | (optional) Number of periods the SQS scale-up alarm evaluates. | `number` | `1` | no |
 | <a name="input_sqs_up_metric_name"></a> [sqs\_up\_metric\_name](#input\_sqs\_up\_metric\_name) | (optional) CloudWatch metric name for the SQS scale-up alarm. Falls back to `sqs_metric_name`. | `string` | `null` | no |
 | <a name="input_sqs_up_statistic"></a> [sqs\_up\_statistic](#input\_sqs\_up\_statistic) | (optional) Statistic applied to the metric of the SQS scale-up alarm. | `string` | `"Sum"` | no |
+| <a name="input_sqs_up_treat_missing_data"></a> [sqs\_up\_treat\_missing\_data](#input\_sqs\_up\_treat\_missing\_data) | (optional) How the SQS scale-up alarm treats missing datapoints. | `string` | `"missing"` | no |
 | <a name="input_sqs_visible_down_threshold"></a> [sqs\_visible\_down\_threshold](#input\_sqs\_visible\_down\_threshold) | Number of visible SQS messages below which a scale-down event is triggered | `number` | `10` | no |
 | <a name="input_sqs_visible_up_threshold"></a> [sqs\_visible\_up\_threshold](#input\_sqs\_visible\_up\_threshold) | Number of visible SQS messages that triggers a scale-up event | `number` | `100` | no |
 | <a name="input_ssm_path"></a> [ssm\_path](#input\_ssm\_path) | (optional) path to the ssm parameters you want pulled into your container during execution of the entrypoint | `string` | `null` | no |

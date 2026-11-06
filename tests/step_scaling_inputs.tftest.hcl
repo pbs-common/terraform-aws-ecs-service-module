@@ -172,8 +172,134 @@ run "custom_metric_step_scaling_rejects_steps" {
   expect_failures = [var.scale_up_steps]
 }
 
+# ── Alarm tuning ─────────────────────────────────────────────────────────────
+
+run "sqs_alarms_default_treat_missing_data" {
+  command = plan
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.sqs_high[0].treat_missing_data == "missing" && aws_cloudwatch_metric_alarm.sqs_low[0].treat_missing_data == "missing"
+    error_message = "Both SQS alarms must keep treat_missing_data = missing by default."
+  }
+}
+
+run "sqs_treat_missing_data_applies" {
+  command = plan
+  variables {
+    sqs_up_treat_missing_data   = "notBreaching"
+    sqs_down_treat_missing_data = "breaching"
+  }
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.sqs_high[0].treat_missing_data == "notBreaching" && aws_cloudwatch_metric_alarm.sqs_low[0].treat_missing_data == "breaching"
+    error_message = "SQS treat missing data must apply per direction."
+  }
+}
+
+run "sqs_treat_missing_data_is_validated" {
+  command = plan
+  variables {
+    sqs_down_treat_missing_data = "zero"
+  }
+  expect_failures = [var.sqs_down_treat_missing_data]
+}
+
+run "cpu_memory_alarms_match_previous_behaviour" {
+  command = plan
+  variables {
+    scaling_approach     = "step_scaling"
+    memory_count_scaling = true
+  }
+  assert {
+    condition = alltrue([
+      for a in [aws_cloudwatch_metric_alarm.cpu_high[0], aws_cloudwatch_metric_alarm.cpu_low[0], aws_cloudwatch_metric_alarm.memory_high[0], aws_cloudwatch_metric_alarm.memory_low[0]] :
+      a.datapoints_to_alarm == null && a.treat_missing_data == "missing"
+    ])
+    error_message = "CPU and memory alarms must keep datapoints_to_alarm unset and treat_missing_data = missing by default."
+  }
+}
+
+run "cpu_memory_alarm_tuning_applies" {
+  command = plan
+  variables {
+    scaling_approach                    = "step_scaling"
+    memory_count_scaling                = true
+    scaling_evaluation_periods          = 3
+    cpu_memory_up_datapoints_to_alarm   = 2
+    cpu_memory_down_datapoints_to_alarm = 3
+    cpu_memory_up_treat_missing_data    = "notBreaching"
+    cpu_memory_down_treat_missing_data  = "breaching"
+  }
+  assert {
+    condition = alltrue([
+      for a in [aws_cloudwatch_metric_alarm.cpu_high[0], aws_cloudwatch_metric_alarm.memory_high[0]] :
+      a.datapoints_to_alarm == 2 && a.treat_missing_data == "notBreaching"
+    ])
+    error_message = "Scale-up tuning must apply to both the CPU and memory high alarms."
+  }
+  assert {
+    condition = alltrue([
+      for a in [aws_cloudwatch_metric_alarm.cpu_low[0], aws_cloudwatch_metric_alarm.memory_low[0]] :
+      a.datapoints_to_alarm == 3 && a.treat_missing_data == "breaching"
+    ])
+    error_message = "Scale-down tuning must apply to both the CPU and memory low alarms."
+  }
+}
+
+run "cpu_memory_datapoints_cannot_exceed_evaluation_periods" {
+  command = plan
+  variables {
+    scaling_approach                  = "step_scaling"
+    scaling_evaluation_periods        = 2
+    cpu_memory_up_datapoints_to_alarm = 3
+  }
+  expect_failures = [var.cpu_memory_up_datapoints_to_alarm]
+}
+
+run "cpu_memory_treat_missing_data_is_validated" {
+  command = plan
+  variables {
+    scaling_approach                 = "step_scaling"
+    cpu_memory_up_treat_missing_data = "zero"
+  }
+  expect_failures = [var.cpu_memory_up_treat_missing_data]
+}
+
+run "custom_metric_datapoints_to_alarm" {
+  command = plan
+  variables {
+    scaling_approach = "custom_metric_step_scaling"
+    custom_metric_step_scaling = [
+      {
+        name       = "latency"
+        scale_up   = { namespace = "Custom", metric_name = "Latency", threshold = 500, evaluation_periods = 3, datapoints_to_alarm = 2 }
+        scale_down = { namespace = "Custom", metric_name = "Latency", threshold = 100 }
+      },
+    ]
+  }
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.custom_metric_high["latency"].datapoints_to_alarm == 2 && aws_cloudwatch_metric_alarm.custom_metric_low["latency"].datapoints_to_alarm == null
+    error_message = "custom_metric_step_scaling must pass datapoints_to_alarm through, leaving it unset by default."
+  }
+}
+
+run "custom_metric_datapoints_cannot_exceed_evaluation_periods" {
+  command = plan
+  variables {
+    scaling_approach = "custom_metric_step_scaling"
+    custom_metric_step_scaling = [
+      {
+        name       = "latency"
+        scale_up   = { namespace = "Custom", metric_name = "Latency", threshold = 500, datapoints_to_alarm = 2 }
+        scale_down = { namespace = "Custom", metric_name = "Latency", threshold = 100 }
+      },
+    ]
+  }
+  expect_failures = [var.custom_metric_step_scaling]
+}
+
 # ── Plan sanity ────────────────────────────────────────────────────────────
 
+# A wrapper module may pass requests_count_scaling through as null. That planned before the
+# shared step inputs existed, so it must still plan (and create no step policies, as before).
 run "step_scaling_with_null_requests_count_scaling_still_plans" {
   command = plan
   variables {

@@ -202,3 +202,85 @@ run "steps_reject_unsupported_approach" {
   }
   expect_failures = [var.scale_up_steps]
 }
+
+# ── Alarm tuning ─────────────────────────────────────────────────────────────
+
+run "default_alarms_match_previous_behaviour" {
+  command = plan
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.request_count_high[0].metric_name == "RequestCountPerTarget" && aws_cloudwatch_metric_alarm.request_count_low[0].metric_name == "RequestCountPerTarget"
+    error_message = "Both alarms must default to RequestCountPerTarget."
+  }
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.request_count_high[0].datapoints_to_alarm == 1 && aws_cloudwatch_metric_alarm.request_count_low[0].datapoints_to_alarm == 1
+    error_message = "Both alarms must default to datapoints_to_alarm = 1."
+  }
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.request_count_high[0].treat_missing_data == "missing" && aws_cloudwatch_metric_alarm.request_count_low[0].treat_missing_data == "missing"
+    error_message = "Both alarms must default to treat_missing_data = missing, the AWS default."
+  }
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.request_count_high[0].alarm_description == "Scale up tftest-svc based on ALB RequestCountPerTarget"
+    error_message = "The default scale-up description must not change, to avoid an in-place update."
+  }
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.request_count_low[0].alarm_description == "Scale down tftest-svc based on ALB RequestCountPerTarget"
+    error_message = "The default scale-down description must not change, to avoid an in-place update."
+  }
+}
+
+run "alarm_tuning_inputs_apply" {
+  command = plan
+
+  variables {
+    alb_metric_name              = "RequestCount"
+    scaling_evaluation_periods   = 3
+    alb_up_datapoints_to_alarm   = 2
+    alb_down_datapoints_to_alarm = 3
+    alb_up_treat_missing_data    = "notBreaching"
+    alb_down_treat_missing_data  = "breaching"
+  }
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.request_count_high[0].metric_name == "RequestCount" && aws_cloudwatch_metric_alarm.request_count_low[0].metric_name == "RequestCount"
+    error_message = "alb_metric_name must apply to both alarms."
+  }
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.request_count_high[0].datapoints_to_alarm == 2 && aws_cloudwatch_metric_alarm.request_count_low[0].datapoints_to_alarm == 3
+    error_message = "Datapoints to alarm must apply per direction."
+  }
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.request_count_high[0].treat_missing_data == "notBreaching" && aws_cloudwatch_metric_alarm.request_count_low[0].treat_missing_data == "breaching"
+    error_message = "Treat missing data must apply per direction."
+  }
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.request_count_high[0].dimensions == tomap({ LoadBalancer = "app/test-alb/50dc6c495c0c9188", TargetGroup = "targetgroup/test-tg/73e2d6bc24d8a067" })
+    error_message = "RequestCount must keep the LoadBalancer + TargetGroup dimensions, so it counts only this service's requests."
+  }
+}
+
+run "metric_name_is_validated" {
+  command = plan
+  variables {
+    alb_metric_name = "TargetResponseTime"
+  }
+  expect_failures = [var.alb_metric_name]
+}
+
+run "datapoints_cannot_exceed_evaluation_periods" {
+  command = plan
+  variables {
+    scaling_evaluation_periods = 2
+    alb_up_datapoints_to_alarm = 3
+  }
+  expect_failures = [var.alb_up_datapoints_to_alarm]
+}
+
+run "treat_missing_data_is_validated" {
+  command = plan
+  variables {
+    alb_down_treat_missing_data = "zero"
+  }
+  expect_failures = [var.alb_down_treat_missing_data]
+}
