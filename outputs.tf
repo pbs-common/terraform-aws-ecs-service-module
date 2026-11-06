@@ -68,6 +68,24 @@ output "lb_sg" {
   value       = local.create_lb ? one(aws_security_group.lb_sg[*].id) : null
 }
 
+output "target_group_arn" {
+  description = "ARN of the target group, if this module created one"
+  value       = local.create_lb ? one(aws_lb_target_group.target_group[*].arn) : null
+}
+
+# CloudWatch dimensions take the ARN suffix rather than the ARN. The module already derives these
+# internally for its own request_count alarms; exposing them saves every caller re-implementing
+# the same two regexes to build an ALB alarm.
+output "lb_arn_suffix" {
+  description = "ARN suffix of the load balancer, in the form CloudWatch's LoadBalancer dimension expects"
+  value       = local.create_lb ? one(aws_lb.lb[*].arn_suffix) : null
+}
+
+output "target_group_arn_suffix" {
+  description = "ARN suffix of the target group, in the form CloudWatch's TargetGroup dimension expects"
+  value       = local.create_lb ? one(aws_lb_target_group.target_group[*].arn_suffix) : null
+}
+
 output "lb_arn" {
   description = "Load balancer ARN"
   value       = local.create_lb ? one(aws_lb.lb[*].arn) : null

@@ -76,6 +76,7 @@ locals {
   service_sg_name_base       = var.service_sg_name != null ? var.service_sg_name : "${local.name}-service-sg${var.use_sg_name_prefix ? "-" : ""}"
 
   load_balancer_sg_name        = var.use_sg_name_prefix ? null : local.load_balancer_sg_name_base
+  load_balancer_sg_description = var.load_balancer_sg_description != null ? var.load_balancer_sg_description : "Controls access to the ${local.name} load balancer"
   load_balancer_sg_name_prefix = var.use_sg_name_prefix ? local.load_balancer_sg_name_base : null
   service_sg_name              = var.use_sg_name_prefix ? null : local.service_sg_name_base
   service_sg_name_prefix       = var.use_sg_name_prefix ? local.service_sg_name_base : null
